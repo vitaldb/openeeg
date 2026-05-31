@@ -1,8 +1,12 @@
-"""Validate openibis variants on the bundled 1.vital case.
+"""Validate openibis variants on VitalDB case 1.
 
 Computes the full bsr × deep grid plus standalone BSR detectors, and
 compares each against the BIS Vista's actual ``BIS/BIS`` and ``BIS/SR``
 tracks (SQI ≥ 80 epochs only).
+
+The .vital file is fetched on demand from the VitalDB Open Dataset
+(CC-BY-NC 4.0). The user is responsible for complying with the
+VitalDB dataset terms.
 
 Usage::
 
@@ -19,12 +23,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from openeeg import openibis, openbsr
 from openeeg.openibis import bsr as openibis_bsr
+from openeeg.cohort import load_case, preprocess_eeg
 
-import vitaldb
 import matplotlib.pyplot as plt
 
 
-VITAL_FILE = Path(__file__).resolve().parents[1] / "1.vital"
+CASEID = 1
 FS = 128
 SQI_THRESH = 80
 
@@ -34,21 +38,6 @@ def lin_concordance(x: np.ndarray, y: np.ndarray) -> float:
     vx, vy = x.var(), y.var()
     cov = np.mean((x - mx) * (y - my))
     return 2.0 * cov / (vx + vy + (mx - my) ** 2)
-
-
-def preprocess_eeg(raw: np.ndarray) -> np.ndarray:
-    eeg = raw.copy()
-    nan_mask = np.isnan(eeg)
-    max_gap = int(FS * 0.05)
-    diff = np.diff(np.concatenate(([0], nan_mask.astype(int), [0])))
-    starts = np.where(diff == 1)[0]
-    ends = np.where(diff == -1)[0]
-    for s, e in zip(starts, ends):
-        if e - s <= max_gap and s > 0 and e < len(eeg):
-            eeg[s:e] = np.linspace(eeg[s - 1], eeg[e], e - s, endpoint=False)
-    eeg[np.isnan(eeg)] = 0.0
-    eeg = eeg - np.median(eeg[~nan_mask])
-    return eeg
 
 
 def metrics(actual: np.ndarray, predicted: np.ndarray, valid: np.ndarray):
@@ -63,14 +52,14 @@ def metrics(actual: np.ndarray, predicted: np.ndarray, valid: np.ndarray):
 
 
 def main() -> None:
-    print(f"Reading {VITAL_FILE.name} ...")
-    vf = vitaldb.VitalFile(str(VITAL_FILE))
-    eeg_raw = vf.to_numpy(["BIS/EEG1_WAV"], 1.0 / FS).flatten()
-    bis_actual = vf.to_numpy(["BIS/BIS"], 1.0).flatten()
-    sqi_actual = vf.to_numpy(["BIS/SQI"], 1.0).flatten()
-    sr_actual = vf.to_numpy(["BIS/SR"], 1.0).flatten()
-
-    eeg = preprocess_eeg(eeg_raw)
+    print(f"Fetching VitalDB case {CASEID} ...")
+    case = load_case(CASEID, cache_dir=Path(__file__).resolve().parents[1] / ".cache" / "vital")
+    if case is None:
+        raise SystemExit(f"Failed to load VitalDB case {CASEID}.")
+    eeg = preprocess_eeg(case["eeg"])
+    bis_actual = case["bis"]
+    sqi_actual = case["sqi"]
+    sr_actual = case["sr"]
     print(f"  EEG samples: {len(eeg):,}  duration: {len(eeg)/FS/60:.1f} min")
 
     bis_grid = {}

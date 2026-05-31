@@ -47,8 +47,23 @@ All outputs are at **2 Hz** (one value per 0.5 s epoch). Downsample by 2 to alig
 
 ## Validation
 
-`scripts/01_validate_1vital.py` runs all variants against the bundled `1.vital` case and reports MAE, Pearson r, and Lin's concordance vs the BIS Vista's `BIS/BIS` and `BIS/SR` tracks (filtered to SQI ≥ 80).
+`scripts/01_validate_1vital.py` fetches VitalDB case 1 on demand and
+runs all variants, reporting MAE, Pearson r, and Lin's concordance
+vs the BIS Vista's `BIS/BIS` and `BIS/SR` tracks (filtered to SQI ≥ 80).
+
+`scripts/02_cohort_benchmark.py --fold val --n 100` runs the same
+grid across a 100-case validation cohort.
+
+## Data
+
+The VitalDB Open Dataset is licensed under **CC-BY-NC 4.0**. The
+scripts in this repository download cases on demand via the `vitaldb`
+Python package; no .vital files are bundled in the repository. By
+using these scripts you agree to the
+[VitalDB dataset terms](https://vitaldb.net/dataset/).
 
 ## License
 
-Apache-2.0. Algorithm implementations follow the *described methodology* in the cited papers; no proprietary code is included.
+Apache-2.0 for the source code in `openeeg/`, `scripts/`, and `tests/`.
+Algorithm implementations follow the *described methodology* in the
+cited papers; no proprietary code is included.
