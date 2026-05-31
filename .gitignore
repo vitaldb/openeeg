@@ -7,3 +7,12 @@ Thumbs.db
 .venv/
 venv/
 .env
+
+# Agent-extracted text caches (regeneratable from the PDFs)
+references/_txt/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.pytest_cache/
