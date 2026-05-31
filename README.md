@@ -11,8 +11,17 @@ Open-source EEG processing for depth-of-anesthesia — paper-faithful reimplemen
 ## Install
 
 ```bash
+# from PyPI (distribution name is vitaldb-openeeg; module name is openeeg)
+pip install vitaldb-openeeg
+
+# from source
 pip install -e .[vitaldb,plot,dev]
 ```
+
+The distribution name `vitaldb-openeeg` is a short-term placeholder
+while [PEP 541 takeover](docs/pep541-openeeg-takeover.md) of the
+abandoned `openeeg` name proceeds. The Python import name is always
+`openeeg`, so user code does not need to change.
 
 ## Quick start
 

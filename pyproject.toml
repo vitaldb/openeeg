@@ -1,5 +1,5 @@
 [project]
-name = "openeeg"
+name = "vitaldb-openeeg"
 version = "0.0.1"
 description = "Open-source EEG processing: BIS reproduction, burst suppression, and related depth-of-anesthesia metrics"
 readme = "README.md"
