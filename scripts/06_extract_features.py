@@ -1,6 +1,7 @@
-"""Phase 3 — extract per-second feature rows from cached VitalDB cases.
+"""Phase 3 — extract per-second feature rows from VitalDB cases.
 
-Output: results/features_<fold>.parquet with one row per 1-second epoch:
+Output: results/features_<fold>_n<N>.parquet with one row per 1-second
+epoch:
   * 16 engineered features (openibis predictions, BSR variants, spectral
     features, sub-band powers, EMG proxy + oracle, 30 s context)
   * target = actual BIS Vista value at that second
@@ -8,11 +9,16 @@ Output: results/features_<fold>.parquet with one row per 1-second epoch:
 
 Filtered to SQI ≥ 80 and non-NaN target.
 
-Run after the cohort cache is populated. Defaults to all cached cases.
+Usage::
+
+    python scripts/06_extract_features.py --fold val --n 100
+    python scripts/06_extract_features.py --fold train --n 500
 """
 from __future__ import annotations
 
+import argparse
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -23,11 +29,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from openeeg import openibis, sef, bcsef, beta_ratio, emg_estimate
 from openeeg.openibis import bsr as openibis_bsr, _psd, _band, _n_epochs, STRIDE, PSD_WINDOW, FS, N_BINS
-from openeeg.cohort import load_case, preprocess_eeg
+from openeeg.cohort import load_case, preprocess_eeg, caseids_bis, split
 
-CACHE = Path("C:/temp/openeeg_cache")
 SQI_THRESH = 80
-OUT_PARQUET = Path(__file__).resolve().parents[1] / "results" / "features_val.parquet"
 
 
 def per_epoch_psd(eeg: np.ndarray, hp_hz: float = 0.65) -> np.ndarray:
@@ -133,15 +137,26 @@ def features_for_case(case: dict) -> pd.DataFrame | None:
 
 
 def main():
-    caseids = sorted(int(p.stem) for p in CACHE.glob("*.vital"))
-    print(f"Found {len(caseids)} cached cases.")
-    OUT_PARQUET.parent.mkdir(parents=True, exist_ok=True)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--fold", default="val", choices=["train", "val", "test"])
+    ap.add_argument("--n", type=int, default=100, help="Cases to extract from fold.")
+    ap.add_argument("--offset", type=int, default=0)
+    args = ap.parse_args()
+
+    repo = Path(__file__).resolve().parents[1]
+    out_parquet = repo / "results" / f"features_{args.fold}_n{args.n}.parquet"
+    out_parquet.parent.mkdir(parents=True, exist_ok=True)
+
+    fold_ids = split(caseids_bis(), fold=args.fold)[args.offset : args.offset + args.n]
+    print(f"Extracting fold={args.fold}, N={len(fold_ids)} cases "
+          f"({fold_ids[0]} … {fold_ids[-1]}); output → {out_parquet.name}")
 
     parts = []
     n_used = 0
     n_skip = 0
-    for cid in caseids:
-        case = load_case(cid, cache_dir=CACHE)
+    t0 = time.time()
+    for cid in fold_ids:
+        case = load_case(cid)
         if case is None:
             n_skip += 1
             continue
@@ -156,16 +171,20 @@ def main():
             continue
         parts.append(df)
         n_used += 1
-        if n_used % 10 == 0:
-            print(f"  {n_used}/{len(caseids)} cases ({sum(len(x) for x in parts):,} rows so far)")
+        if n_used % 25 == 0:
+            elapsed = time.time() - t0
+            rate = n_used / elapsed
+            eta = (len(fold_ids) - n_used) / rate
+            print(f"  {n_used}/{len(fold_ids)} cases  rows={sum(len(x) for x in parts):,}  "
+                  f"elapsed={elapsed/60:.1f}min  ETA={eta/60:.1f}min")
 
     all_df = pd.concat(parts, ignore_index=True)
-    # Cast features to float32 to halve parquet size; targets stay float64.
     feat_cols = [c for c in all_df.columns if c not in ("target", "sqi", "case_id", "time_sec")]
     all_df[feat_cols] = all_df[feat_cols].astype(np.float32)
-    all_df.to_parquet(OUT_PARQUET, index=False, compression="zstd")
-    print(f"\nWrote {OUT_PARQUET.name}: {len(all_df):,} rows × {len(all_df.columns)} cols, "
-          f"{OUT_PARQUET.stat().st_size/1e6:.1f} MB, {n_used} cases, {n_skip} skipped.")
+    all_df.to_parquet(out_parquet, index=False, compression="zstd")
+    print(f"\nWrote {out_parquet.name}: {len(all_df):,} rows × {len(all_df.columns)} cols, "
+          f"{out_parquet.stat().st_size/1e6:.1f} MB, {n_used} cases, {n_skip} skipped, "
+          f"total {(time.time()-t0)/60:.1f} min.")
 
 
 if __name__ == "__main__":

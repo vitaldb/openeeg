@@ -1,6 +1,7 @@
 """VitalDB BIS cohort utilities — case listing, deterministic split, loader."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -12,6 +13,33 @@ FS = 128
 
 # Tracks every BIS-monitored VitalDB case provides.
 BIS_TRACKS = ("BIS/EEG1_WAV", "BIS/BIS", "BIS/SQI", "BIS/SR", "BIS/EMG")
+
+# If you have a local copy of the VitalDB Open Dataset .vital files,
+# set VITALDB_DATA_ROOT to that directory and load_case() will read
+# directly from disk instead of fetching over HTTPS. The directory
+# should contain "<caseid>.vital" files at its top level (matching
+# the layout of <https://api.vitaldb.net/<version>/>).
+_DEFAULT_DATA_ROOTS = (
+    "D:/vitaldb_open_1.0.1",
+    "D:\\vitaldb_open_1.0.1",
+)
+
+
+def _resolve_local_vital(caseid: int) -> Optional[Path]:
+    """Return a local .vital path for the case if available, else None."""
+    env_root = os.environ.get("VITALDB_DATA_ROOT")
+    candidates = []
+    if env_root:
+        candidates.append(Path(env_root))
+    for r in _DEFAULT_DATA_ROOTS:
+        candidates.append(Path(r))
+    for root in candidates:
+        if not root.exists():
+            continue
+        p = root / f"{caseid}.vital"
+        if p.is_file():
+            return p
+    return None
 
 
 def caseids_bis() -> list[int]:
@@ -44,11 +72,16 @@ def load_case(
     dict with keys ``eeg`` (128 Hz), ``bis`` / ``sqi`` / ``sr`` / ``emg``
     (each 1 Hz), or ``None`` if the case cannot be loaded.
 
-    If ``cache_dir`` is given, the .vital file is fetched once via
-    HTTP and cached on disk; subsequent calls read from disk only.
+    Resolution order for the underlying ``<caseid>.vital`` file:
+      1. ``VITALDB_DATA_ROOT`` env var, then ``D:/vitaldb_open_1.0.1``
+         (local Open Dataset mirror — fastest).
+      2. ``cache_dir`` if given (HTTP-fetched on first miss).
+      3. Direct HTTP fetch from the VitalDB API as a last resort.
     """
-    vital_path: str
-    if cache_dir is not None:
+    local_path = _resolve_local_vital(caseid)
+    if local_path is not None:
+        vital_path = str(local_path)
+    elif cache_dir is not None:
         cache_dir = Path(cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
         local = cache_dir / f"{caseid}.vital"
