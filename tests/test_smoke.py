@@ -1,7 +1,7 @@
 """Smoke tests: every public function returns the right shape on a synthetic input."""
 import numpy as np
 
-from openeeg import openibis, openbsr
+from openeeg import openibis, openbsr, emg_correct
 
 
 def make_eeg(n_seconds: int = 120, seed: int = 0) -> np.ndarray:
@@ -65,3 +65,32 @@ def test_openbsr_shape():
     valid = out[~np.isnan(out)]
     assert valid.min() >= 0.0 - 1e-6
     assert valid.max() <= 100.0 + 1e-6
+
+
+def test_emg_correct_no_effect_below_threshold():
+    bis = np.array([95.0, 50.0, 20.0])
+    emg = np.array([25.0, 30.0, 33.0])  # all below 34 dB
+    out = emg_correct(bis, emg)
+    np.testing.assert_allclose(out, bis)
+
+
+def test_emg_correct_subtracts_above_threshold():
+    bis = np.array([95.0, 50.0])
+    emg = np.array([44.0, 34.0])  # 10 dB above / at threshold
+    out = emg_correct(bis, emg)
+    np.testing.assert_allclose(out, [95.0 - 0.54 * 10.0, 50.0])
+
+
+def test_emg_correct_clips_to_valid_range():
+    bis = np.array([5.0, 100.0])
+    emg = np.array([80.0, 80.0])  # very high EMG
+    out = emg_correct(bis, emg)
+    assert (out >= 0.0).all() and (out <= 100.0).all()
+
+
+def test_emg_correct_preserves_nan_in_emg():
+    bis = np.array([50.0, 60.0])
+    emg = np.array([np.nan, 50.0])
+    out = emg_correct(bis, emg)
+    assert out[0] == 50.0  # NaN EMG → no correction
+    assert out[1] < 60.0   # 50 dB → correction applied

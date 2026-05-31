@@ -27,12 +27,16 @@ abandoned `openeeg` name proceeds. The Python import name is always
 
 ```python
 import numpy as np
-from openeeg import openibis, openbsr
+from openeeg import openibis, openbsr, emg_correct
 
 # eeg: 1-D numpy array, raw EEG in microvolts, sampled at 128 Hz
 bis = openibis(eeg)                       # Connor 2023 paper-faithful
-bis = openibis(eeg, deep="ellerkmann")   # paper + Ellerkmann 2004 deep-regime fit
+bis = openibis(eeg, deep="ellerkmann")    # paper + Ellerkmann 2004 deep-regime fit
+bis = openibis(eeg, bsr="quazi")          # pre-2023 QUAZI BSR detector
 bsr_pct = openbsr(eeg)                    # Connor 2025 OpenBSR (frequency-domain)
+
+# Optional EMG-aware post-correction (needs the BIS/EMG track in dB)
+bis = emg_correct(bis, emg_track)         # subtracts 0.54·max(EMG−34,0)
 ```
 
 All outputs are at **2 Hz** (one value per 0.5 s epoch). Downsample by 2 to align with BIS Vista's 1 Hz output.
@@ -43,7 +47,17 @@ All outputs are at **2 Hz** (one value per 0.5 s epoch). Downsample by 2 to alig
 |---|---|---|
 | `openibis(deep="paper")` | Connor 2023 (A&A) | Paper-faithful (Table 1 verified) |
 | `openibis(deep="ellerkmann")` | Connor 2023 + Ellerkmann 2004 deep-regime BSR fit | Implemented |
+| `openibis(bsr="quazi")` | Pre-2023 BIS-convention burst-suppression detector | Implemented |
 | `openbsr()` | Connor 2025 OpenBSR | Best-effort (prose-based; Table 1 was a raster image) |
+| `emg_correct()` | Lee 2019 EMG threshold + this repo's 100-case fit | Post-correction; reduces awake (BIS 78–98) MAE by ~28% |
+
+## Cohort baseline (val fold, N=100 VitalDB cases, SQI ≥ 80)
+
+| Variant | MAE mean | r mean | 78-98 MAE | 61-78 MAE |
+|---|---|---|---|---|
+| `openibis(bsr="paper")` | 6.82 | 0.786 | 10.63 | 7.42 |
+| `openibis(bsr="quazi")` | 6.31 | 0.795 | 11.51 | 8.40 |
+| `openibis(bsr="quazi")` + `emg_correct()` | **6.11** | 0.785 | **8.26** | **6.55** |
 
 ## Validation
 

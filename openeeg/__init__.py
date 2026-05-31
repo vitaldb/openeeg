@@ -13,7 +13,8 @@ for the canonical reference.
 """
 from openeeg.openibis import openibis
 from openeeg.openbsr import openbsr
+from openeeg.correct import emg_correct
 
 __version__ = "0.0.1"
 
-__all__ = ["openibis", "openbsr", "__version__"]
+__all__ = ["openibis", "openbsr", "emg_correct", "__version__"]
