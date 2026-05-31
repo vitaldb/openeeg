@@ -34,6 +34,18 @@ def test_openibis_ellerkmann_shape():
     assert out.shape == (expected_n_epochs(len(eeg)),)
 
 
+def test_openibis_quazi_bsr_shape():
+    eeg = make_eeg()
+    out = openibis(eeg, bsr="quazi", deep="paper")
+    assert out.shape == (expected_n_epochs(len(eeg)),)
+
+
+def test_openibis_rejects_bad_bsr():
+    import pytest
+    with pytest.raises(ValueError):
+        openibis(make_eeg(), bsr="banana")
+
+
 def test_openibis_rejects_bad_deep():
     import pytest
     with pytest.raises(ValueError):

@@ -84,14 +84,26 @@ def _mean_band_power_db(psd_arr: np.ndarray, lo: float, hi: float) -> float:
     return float(np.mean(10.0 * np.log10(np.maximum(valid, 1e-30))))
 
 
-# ----- burst-suppression detector (Connor 2023) -----------------------------
+# ----- burst-suppression detectors ------------------------------------------
 
-def _bsr(eeg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Burst-suppression detector per Connor 2023.
+def _trailing_bsr_pct(BSRmap: np.ndarray) -> np.ndarray:
+    """Trailing 63-second mean of a per-epoch suppression flag, in percent."""
+    K = int(63.0 / STRIDE_SEC)
+    cs = np.concatenate([[0.0], np.cumsum(BSRmap.astype(float))])
+    BSR = np.empty(len(BSRmap))
+    for i in range(len(BSRmap)):
+        j = max(0, i - K + 1)
+        BSR[i] = (cs[i + 1] - cs[j]) / (i - j + 1)
+    return 100.0 * BSR
+
+
+def _bsr_paper(eeg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Connor 2023 paper-faithful burst-suppression detector.
 
     For each 0.5-s epoch, examine a 1-second window starting at sample
     ``(n + 6.5) * STRIDE``. The window is marked suppressed if every
-    sample stays within ±5 µV of its linear regression baseline.
+    sample stays within ±5 µV of its linear regression baseline. No
+    high-pass filter is applied prior to the amplitude test.
 
     Returns
     -------
@@ -110,14 +122,40 @@ def _bsr(eeg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         seg = eeg[s:e]
         BSRmap[n] = bool(np.all(np.abs(seg - _baseline(seg)) <= 5.0))
 
-    # Trailing 63-second mean = 126 strides
-    K = int(63.0 / STRIDE_SEC)
-    cs = np.concatenate([[0.0], np.cumsum(BSRmap.astype(float))])
-    BSR = np.empty(N)
-    for i in range(N):
-        j = max(0, i - K + 1)
-        BSR[i] = (cs[i + 1] - cs[j]) / (i - j + 1)
-    return BSRmap, 100.0 * BSR
+    return BSRmap, _trailing_bsr_pct(BSRmap)
+
+
+def _bsr_quazi(eeg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """QUAZI-style burst-suppression detector (pre-2023 BIS convention).
+
+    Applies a 2nd-order 1 Hz Butterworth high-pass (zero-phase), then
+    declares a 0.5-second window suppressed if its maximum absolute
+    value is below 10 µV. Empirically tracks the BIS Vista's published
+    suppression-ratio track better than the Connor 2023 paper variant
+    on the VitalDB BIS cohort.
+    """
+    N = _n_epochs(eeg)
+    BSRmap = np.zeros(N, dtype=bool)
+    b, a = signal.butter(2, 1.0 / (FS / 2.0), "high")
+    eeg_hp = signal.filtfilt(b, a, eeg)
+
+    for n in range(N):
+        s = int((n + 6.5) * STRIDE)
+        e = s + STRIDE
+        if e > len(eeg_hp):
+            continue
+        BSRmap[n] = bool(np.max(np.abs(eeg_hp[s:e])) < 10.0)
+
+    return BSRmap, _trailing_bsr_pct(BSRmap)
+
+
+def _bsr(eeg: np.ndarray, kind: str = "paper") -> tuple[np.ndarray, np.ndarray]:
+    """Dispatch to a named burst-suppression detector."""
+    if kind == "paper":
+        return _bsr_paper(eeg)
+    elif kind == "quazi":
+        return _bsr_quazi(eeg)
+    raise ValueError(f"Unknown BSR detector: {kind!r}; expected 'paper' or 'quazi'.")
 
 
 # ----- sawtooth (K-complex / artifact) detector -----------------------------
@@ -259,7 +297,7 @@ def _mixer_ellerkmann(components: np.ndarray, BSR: np.ndarray) -> np.ndarray:
 
 # ----- public entry point ----------------------------------------------------
 
-def openibis(eeg, fs: int = 128, deep: str = "paper") -> np.ndarray:
+def openibis(eeg, fs: int = 128, bsr: str = "paper", deep: str = "paper") -> np.ndarray:
     """Compute openibis BIS-mimic from raw EEG.
 
     Parameters
@@ -268,6 +306,14 @@ def openibis(eeg, fs: int = 128, deep: str = "paper") -> np.ndarray:
         Raw EEG in microvolts. Must be sampled at 128 Hz (BIS standard).
     fs : int, default 128
         Sampling frequency, in Hz. Only 128 is currently supported.
+    bsr : {"paper", "quazi"}, default "paper"
+        Burst-suppression detector:
+          * ``"paper"`` — Connor 2023: no high-pass, 5 µV threshold on
+            ``|x − baseline(x)|`` over a 1-second window.
+          * ``"quazi"`` — pre-2023 BIS convention: 1 Hz Butterworth
+            high-pass then 10 µV ``max|x|`` over a 0.5-second window.
+            Empirically tracks BIS Vista's published SR more closely on
+            VitalDB cases.
     deep : {"paper", "ellerkmann"}, default "paper"
         Deep-anaesthesia (burst-suppression) scoring rule:
           * ``"paper"``      — Connor 2023, score = 50 − BSR/2.
@@ -285,18 +331,21 @@ def openibis(eeg, fs: int = 128, deep: str = "paper") -> np.ndarray:
     if deep not in {"paper", "ellerkmann"}:
         raise ValueError(f"deep must be 'paper' or 'ellerkmann'; got {deep!r}.")
 
-    BSRmap, BSR = _bsr(eeg)
+    BSRmap, BSR = _bsr(eeg, kind=bsr)
     comp = _components(eeg, BSRmap)
     return _mixer_paper(comp, BSR) if deep == "paper" else _mixer_ellerkmann(comp, BSR)
 
 
-def bsr(eeg, fs: int = 128) -> np.ndarray:
-    """Compute Connor-2023 burst-suppression ratio (percent) at 2 Hz.
+def bsr(eeg, fs: int = 128, kind: str = "paper") -> np.ndarray:
+    """Burst-suppression ratio (percent) at 2 Hz.
 
-    Convenience wrapper that returns only the BSR trajectory.
+    Parameters
+    ----------
+    eeg : array-like, 1-D — raw EEG in µV, 128 Hz.
+    kind : {"paper", "quazi"} — detector choice; see :func:`openibis`.
     """
     eeg = np.asarray(eeg, dtype=float)
     if fs != FS:
         raise ValueError(f"bsr() requires fs=128; got {fs}.")
-    _, BSR = _bsr(eeg)
+    _, BSR = _bsr(eeg, kind=kind)
     return BSR

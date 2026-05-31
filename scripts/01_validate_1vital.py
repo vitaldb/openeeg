@@ -1,14 +1,8 @@
 """Validate openibis variants on the bundled 1.vital case.
 
-Computes:
-  * openibis(deep="paper")
-  * openibis(deep="ellerkmann")
-  * Connor 2023 BSR
-  * OpenBSR 2025 (best-effort prose port)
-
-and compares all four against the BIS Vista's actual BIS / SR tracks.
-Filters to SQI ≥ 80 epochs only. Reports MAE, Pearson r, and Lin's
-concordance for each BIS variant, and MAE / r for both BSR variants.
+Computes the full bsr × deep grid plus standalone BSR detectors, and
+compares each against the BIS Vista's actual ``BIS/BIS`` and ``BIS/SR``
+tracks (SQI ≥ 80 epochs only).
 
 Usage::
 
@@ -21,7 +15,6 @@ from pathlib import Path
 
 import numpy as np
 
-# Make `openeeg` importable when running this script from repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from openeeg import openibis, openbsr
@@ -37,7 +30,6 @@ SQI_THRESH = 80
 
 
 def lin_concordance(x: np.ndarray, y: np.ndarray) -> float:
-    """Lin's concordance correlation coefficient."""
     mx, my = x.mean(), y.mean()
     vx, vy = x.var(), y.var()
     cov = np.mean((x - mx) * (y - my))
@@ -45,10 +37,9 @@ def lin_concordance(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def preprocess_eeg(raw: np.ndarray) -> np.ndarray:
-    """Interpolate short NaN gaps, zero-fill the rest, baseline-correct."""
     eeg = raw.copy()
     nan_mask = np.isnan(eeg)
-    max_gap = int(FS * 0.05)  # ≤50 ms gaps are interpolated
+    max_gap = int(FS * 0.05)
     diff = np.diff(np.concatenate(([0], nan_mask.astype(int), [0])))
     starts = np.where(diff == 1)[0]
     ends = np.where(diff == -1)[0]
@@ -58,6 +49,17 @@ def preprocess_eeg(raw: np.ndarray) -> np.ndarray:
     eeg[np.isnan(eeg)] = 0.0
     eeg = eeg - np.median(eeg[~nan_mask])
     return eeg
+
+
+def metrics(actual: np.ndarray, predicted: np.ndarray, valid: np.ndarray):
+    a, p = actual[valid], predicted[valid]
+    mae = float(np.mean(np.abs(p - a)))
+    if a.std() > 0 and p.std() > 0:
+        r = float(np.corrcoef(a, p)[0, 1])
+        rc = lin_concordance(a, p)
+    else:
+        r, rc = float("nan"), float("nan")
+    return mae, r, rc
 
 
 def main() -> None:
@@ -71,76 +73,66 @@ def main() -> None:
     eeg = preprocess_eeg(eeg_raw)
     print(f"  EEG samples: {len(eeg):,}  duration: {len(eeg)/FS/60:.1f} min")
 
-    print("Running openibis(deep='paper') ...")
-    bis_paper = openibis(eeg, deep="paper")
-    print("Running openibis(deep='ellerkmann') ...")
-    bis_eller = openibis(eeg, deep="ellerkmann")
-    print("Running Connor 2023 BSR ...")
-    bsr_c23 = openibis_bsr(eeg)
-    print("Running OpenBSR 2025 ...")
-    bsr_c25 = openbsr(eeg)
+    bis_grid = {}
+    for bsr_kind in ("paper", "quazi"):
+        for deep in ("paper", "ellerkmann"):
+            print(f"  openibis(bsr={bsr_kind!r}, deep={deep!r}) ...")
+            bis_grid[(bsr_kind, deep)] = openibis(eeg, bsr=bsr_kind, deep=deep)
 
-    # Align everything to 1 Hz (BIS Vista output rate)
-    bis_paper_1hz = bis_paper[::2]
-    bis_eller_1hz = bis_eller[::2]
-    bsr_c23_1hz = bsr_c23[::2]
-    bsr_c25_1hz = bsr_c25[::2]
+    print("  bsr(kind='paper') ...")
+    bsr_paper = openibis_bsr(eeg, kind="paper")
+    print("  bsr(kind='quazi') ...")
+    bsr_quazi = openibis_bsr(eeg, kind="quazi")
+    print("  openbsr() ...")
+    bsr_openbsr = openbsr(eeg)
 
-    n = min(len(bis_actual), len(bis_paper_1hz), len(sqi_actual), len(sr_actual))
+    bis_1hz = {k: v[::2] for k, v in bis_grid.items()}
+    bsr_paper_1hz = bsr_paper[::2]
+    bsr_quazi_1hz = bsr_quazi[::2]
+    bsr_openbsr_1hz = bsr_openbsr[::2]
+
+    n = min(len(bis_actual), *[len(v) for v in bis_1hz.values()],
+            len(sqi_actual), len(sr_actual))
     bis_actual = bis_actual[:n]
     sqi_actual = sqi_actual[:n]
     sr_actual = sr_actual[:n]
-    bis_paper_1hz = bis_paper_1hz[:n]
-    bis_eller_1hz = bis_eller_1hz[:n]
-    bsr_c23_1hz = bsr_c23_1hz[:n]
-    bsr_c25_1hz = bsr_c25_1hz[:n]
+    bis_1hz = {k: v[:n] for k, v in bis_1hz.items()}
+    bsr_paper_1hz = bsr_paper_1hz[:n]
+    bsr_quazi_1hz = bsr_quazi_1hz[:n]
+    bsr_openbsr_1hz = bsr_openbsr_1hz[:n]
 
-    # BIS metrics (SQI ≥ 80)
-    print("\n=== BIS comparison (SQI >= {}) ===".format(SQI_THRESH))
-    valid = (
+    valid_bis = (
         ~np.isnan(bis_actual)
-        & ~np.isnan(bis_paper_1hz)
-        & ~np.isnan(bis_eller_1hz)
         & ~np.isnan(sqi_actual)
         & (sqi_actual >= SQI_THRESH)
+        & np.all([~np.isnan(v) for v in bis_1hz.values()], axis=0)
     )
-    print(f"  N (valid epochs): {int(valid.sum()):,} / {n:,}")
+    print(f"\n=== BIS comparison (SQI>={SQI_THRESH}, N={int(valid_bis.sum()):,}) ===")
+    print(f"{'variant':<32s}  {'MAE':>6s}  {'r':>6s}  {'Lin_rc':>6s}")
+    for (bsr_kind, deep), pred in bis_1hz.items():
+        mae, r, rc = metrics(bis_actual, pred, valid_bis)
+        label = f"openibis(bsr={bsr_kind!r}, deep={deep!r})"
+        print(f"{label:<32s}  {mae:6.2f}  {r:6.3f}  {rc:6.3f}")
 
-    rows = []
-    for name, pred in [
-        ("openibis (paper)", bis_paper_1hz),
-        ("openibis (ellerkmann)", bis_eller_1hz),
-    ]:
-        a = bis_actual[valid]
-        p = pred[valid]
-        mae = float(np.mean(np.abs(p - a)))
-        r = float(np.corrcoef(a, p)[0, 1])
-        rc = lin_concordance(a, p)
-        rows.append((name, mae, r, rc))
-        print(f"  {name:30s}  MAE={mae:5.2f}   r={r:.3f}   Lin_rc={rc:.3f}")
-
-    # BSR metrics: compare against BIS Vista SR (which is its commercial BSR)
-    print("\n=== BSR comparison (SQI >= {}) ===".format(SQI_THRESH))
     valid_bsr = (
         ~np.isnan(sr_actual)
-        & ~np.isnan(bsr_c23_1hz)
-        & ~np.isnan(bsr_c25_1hz)
         & ~np.isnan(sqi_actual)
         & (sqi_actual >= SQI_THRESH)
+        & ~np.isnan(bsr_paper_1hz)
+        & ~np.isnan(bsr_quazi_1hz)
+        & ~np.isnan(bsr_openbsr_1hz)
     )
-    print(f"  N (valid epochs): {int(valid_bsr.sum()):,}")
+    print(f"\n=== BSR comparison (SQI>={SQI_THRESH}, N={int(valid_bsr.sum()):,}) ===")
+    print(f"{'variant':<32s}  {'MAE':>6s}  {'r':>6s}  {'Lin_rc':>6s}")
     for name, pred in [
-        ("Connor 2023 BSR", bsr_c23_1hz),
-        ("OpenBSR 2025", bsr_c25_1hz),
+        ("Connor 2023 BSR (paper)", bsr_paper_1hz),
+        ("QUAZI BSR", bsr_quazi_1hz),
+        ("OpenBSR 2025", bsr_openbsr_1hz),
     ]:
-        a = sr_actual[valid_bsr]
-        p = pred[valid_bsr]
-        mae = float(np.mean(np.abs(p - a)))
-        r = float(np.corrcoef(a, p)[0, 1]) if a.std() > 0 and p.std() > 0 else float("nan")
-        rc = lin_concordance(a, p) if a.std() > 0 and p.std() > 0 else float("nan")
-        print(f"  {name:30s}  MAE={mae:5.2f}   r={r:.3f}   Lin_rc={rc:.3f}")
+        mae, r, rc = metrics(sr_actual, pred, valid_bsr)
+        print(f"{name:<32s}  {mae:6.2f}  {r:6.3f}  {rc:6.3f}")
 
-    # Plot
+    # Plot grid
     t = np.arange(n)
     low_sqi = np.isnan(sqi_actual) | (sqi_actual < SQI_THRESH)
     shade = []
@@ -155,8 +147,8 @@ def main() -> None:
     if in_low:
         shade.append((start, n))
 
-    fig, axes = plt.subplots(3, 1, figsize=(16, 10), sharex=True,
-                             gridspec_kw={"height_ratios": [1, 1.5, 1]})
+    fig, axes = plt.subplots(3, 1, figsize=(16, 11), sharex=True,
+                             gridspec_kw={"height_ratios": [1, 1.6, 1]})
 
     t_eeg = np.arange(len(eeg)) / FS
     axes[0].plot(t_eeg[::FS], eeg[::FS], lw=0.3, color="steelblue")
@@ -166,25 +158,33 @@ def main() -> None:
     axes[0].set_title("Preprocessed EEG (gray = SQI < 80)")
     axes[0].set_ylim(-60, 60)
 
-    axes[1].plot(t, bis_actual, lw=1.0, color="tab:blue", alpha=0.7, label="Actual BIS")
-    axes[1].plot(t, bis_paper_1hz, lw=0.9, color="tab:red", alpha=0.7, label="openibis (paper)")
-    axes[1].plot(t, bis_eller_1hz, lw=0.9, color="tab:green", alpha=0.7, label="openibis (ellerkmann)")
+    axes[1].plot(t, bis_actual, lw=1.2, color="black", alpha=0.9, label="Actual BIS")
+    colors = {
+        ("paper", "paper"): "tab:red",
+        ("paper", "ellerkmann"): "tab:orange",
+        ("quazi", "paper"): "tab:green",
+        ("quazi", "ellerkmann"): "tab:blue",
+    }
+    for key, pred in bis_1hz.items():
+        axes[1].plot(t, pred, lw=0.8, color=colors[key], alpha=0.7,
+                     label=f"openibis(bsr={key[0]!r}, deep={key[1]!r})")
     for s0, s1 in shade:
         axes[1].axvspan(s0, s1, color="gray", alpha=0.2)
     axes[1].set_ylabel("BIS")
     axes[1].set_title("Actual BIS vs openibis variants")
     axes[1].set_ylim(0, 100)
-    axes[1].legend(loc="upper right")
+    axes[1].legend(loc="upper right", fontsize=8)
 
-    axes[2].plot(t, sr_actual, lw=1.0, color="tab:blue", alpha=0.7, label="Actual SR")
-    axes[2].plot(t, bsr_c23_1hz, lw=0.9, color="tab:red", alpha=0.7, label="Connor 2023 BSR")
-    axes[2].plot(t, bsr_c25_1hz, lw=0.9, color="tab:green", alpha=0.7, label="OpenBSR 2025")
+    axes[2].plot(t, sr_actual, lw=1.2, color="black", alpha=0.9, label="Actual SR")
+    axes[2].plot(t, bsr_paper_1hz, lw=0.8, color="tab:red", alpha=0.7, label="Connor 2023 BSR")
+    axes[2].plot(t, bsr_quazi_1hz, lw=0.8, color="tab:green", alpha=0.7, label="QUAZI BSR")
+    axes[2].plot(t, bsr_openbsr_1hz, lw=0.8, color="tab:blue", alpha=0.7, label="OpenBSR 2025")
     for s0, s1 in shade:
         axes[2].axvspan(s0, s1, color="gray", alpha=0.2)
     axes[2].set_ylabel("BSR / SR (%)")
     axes[2].set_xlabel("Time (seconds)")
     axes[2].set_title("Suppression Ratio comparison")
-    axes[2].legend(loc="upper right")
+    axes[2].legend(loc="upper right", fontsize=9)
 
     plt.tight_layout()
     out = Path(__file__).resolve().parents[1] / "validate_1vital.png"
