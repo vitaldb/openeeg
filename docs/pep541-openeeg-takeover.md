@@ -100,13 +100,13 @@ Per PEP 541, we have attempted to reach the registered maintainers
 through public channels prior to filing this request:
 
 - **Jackie Li** — author email `lijiaqi199609@sina.com` per PKG-INFO.
-  We have sent a message on `[DATE]` explaining the situation and
+  We have sent a message on 2026-05-31 explaining the situation and
   asking whether the project name can be transferred. *Response: [TODO]*.
 - **Seth Zhao** — author email `sethzhao506@berkeley.edu` per
   PKG-INFO. This appears to be a Berkeley undergraduate account; the
   author's current affiliation (per <https://sethzhao506.github.io/>)
   is UCLA. We have also sent a message to `sethzhao506@g.ucla.edu`
-  on `[DATE]` requesting their permission to transfer the name.
+  on 2026-05-31 requesting their permission to transfer the name.
   *Response: [TODO]*.
 
 We respectfully request that PyPI staff additionally attempt outreach
@@ -158,8 +158,7 @@ request.
 
 Before submitting, fill in / verify:
 
-- [ ] Replace `[DATE]` placeholders with the actual dates of outreach
-      attempts (per PEP 541, outreach should precede filing).
+- [x] Outreach sent 2026-05-31 (Jackie Li, Seth Zhao).
 - [ ] Forward any reply received from Jackie Li or Seth Zhao to PyPI
       staff as a follow-up comment.
 - [ ] Confirm `vitaldb` PyPI account is logged in and 2FA enabled

@@ -19,6 +19,11 @@ The two recipients are the registered authors of the existing
 
 Replace `[YOUR NAME]` and `[DATE]` placeholders before sending.
 
+**Status:** Sent on **2026-05-31** to both Jackie Li
+(`lijiaqi199609@sina.com`) and Seth Zhao
+(`sethzhao506@berkeley.edu`, `sethzhao506@g.ucla.edu`). 14-day
+window to **2026-06-14** before filing PEP 541 absent a reply.
+
 ---
 
 ## Email 1 — Jackie Li
@@ -144,11 +149,52 @@ vital@snu.ac.kr
 
 ## After sending — checklist
 
-- [ ] Note the send date in `docs/pep541-openeeg-takeover.md`
-      (`[DATE]` placeholders).
+- [x] Note the send date in `docs/pep541-openeeg-takeover.md`
+      (sent 2026-05-31; 14-day window closes 2026-06-14).
 - [ ] Wait 14 days for a reply.
-- [ ] If consent received: ask current owner to add `vitaldb`
-      as a maintainer at <https://pypi.org/manage/project/openeeg/collaboration/>,
-      then `pip install twine && twine upload` the v0.0.1 sdist.
+- [ ] If consent received: **prefer official transfer over
+      collaborator-add**. See "PyPI permission revocability" below
+      — a granted Maintainer/Owner role can be revoked at any time
+      by the existing Owners, so the durable path is PEP 541
+      with their consent letter attached, which PyPI staff
+      processes as a clean transfer that removes the previous
+      owners. Reply suggesting that route in the same email
+      thread.
 - [ ] If no reply or declined: file the PEP 541 issue per
       `docs/pep541-openeeg-takeover.md`.
+
+## PyPI permission revocability — why we don't just take a
+collaborator role
+
+PyPI has two collaborator roles per project:
+
+| Role | What they can do |
+|---|---|
+| **Owner** | Upload releases · add/remove collaborators · delete project · **remove other Owners** |
+| **Maintainer** | Upload releases only |
+
+Consequences for our request:
+
+- If the current owners add `vitaldb` as a **Maintainer**, they
+  retain Owner role and can revoke at any time.
+- If they add `vitaldb` as an **Owner** but stay on themselves,
+  either side can remove the other. A future account compromise
+  (e.g. their old Berkeley address is taken over) puts the package
+  at risk.
+- The only durable arrangement is for the previous owners to
+  step off the project entirely — either by them voluntarily
+  removing themselves after we are added as Owner, or by PyPI
+  staff executing a transfer through the PEP 541 process.
+
+PEP 541 explicitly accepts **explicit consent of current
+maintainers** as the strongest evidence and processes those
+requests quickly. The recommended sequence is therefore:
+
+1. Receive their consent email.
+2. Reply: "Thank you. Would you mind if we file the official
+   PyPI transfer request (PEP 541) and include this email as
+   evidence of your consent? That way PyPI staff handles the
+   formal transfer."
+3. File the PEP 541 issue per
+   `docs/pep541-openeeg-takeover.md`, attaching the consent
+   correspondence.
