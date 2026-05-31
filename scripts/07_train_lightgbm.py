@@ -56,8 +56,13 @@ def main():
     X_val = df.loc[val_mask, feature_cols].values
     y_val = df.loc[val_mask, "target"].values
 
+    # Sample weighting: deep BIS epochs (BIS<30) are rare; up-weight
+    # them so the L1 loss can't ignore the deep regime.
+    weight_train = np.where(y_train < 30, 5.0, 1.0)
+    print(f"  Sample weighting: {(y_train < 30).sum():,} deep epochs ×5, {(y_train >= 30).sum():,} normal ×1")
+
     # NaN handling: LightGBM accepts NaN; we trust it.
-    dtrain = lgb.Dataset(X_train, label=y_train, feature_name=feature_cols)
+    dtrain = lgb.Dataset(X_train, label=y_train, weight=weight_train, feature_name=feature_cols)
     dval = lgb.Dataset(X_val, label=y_val, feature_name=feature_cols, reference=dtrain)
 
     params = {
@@ -87,6 +92,18 @@ def main():
     pred = np.clip(booster.predict(X_val), 0.0, 100.0)
     baseline = df.loc[val_mask, "openibis_quazi"].values
 
+    # 2-stage: hard-switch to Ellerkmann when the *paper* BSR detector
+    # fires (very low false-positive rate per Phase 0 analysis), AND the
+    # quazi BSR exceeds 40% (confirms substantial suppression).
+    # Ellerkmann 2004: BIS = 44.1 - BSR/2.25, R²=0.99 for BSR>40%.
+    bsr_p = df.loc[val_mask, "bsr_paper"].values
+    bsr_q = df.loc[val_mask, "bsr_quazi"].values
+    ellerkmann = 44.1 - bsr_q / 2.25
+    gate = (bsr_p > 5.0) & (bsr_q > 40.0)
+    pred_2stage = np.clip(np.where(gate, ellerkmann, pred), 0.0, 100.0)
+    print(f"  2-stage gate fires on {int(gate.sum()):,} / {len(gate):,} epochs "
+          f"({100*gate.mean():.1f}%)")
+
     def safe_metrics(p, a):
         m = ~np.isnan(p) & ~np.isnan(a)
         if m.sum() < 2:
@@ -99,7 +116,11 @@ def main():
 
     print("\n=== Sub-val cohort (20 cases) ===")
     print(f"{'variant':<28s}  {'MAE':>6s}  {'r':>6s}  {'Lin_rc':>7s}  {'N':>9s}")
-    for name, p in [("openibis(quazi, paper)", baseline), ("LightGBM Phase 3a", pred)]:
+    for name, p in [
+        ("openibis(quazi, paper)", baseline),
+        ("LightGBM Phase 3a", pred),
+        ("LightGBM + Ellerkmann (3b)", pred_2stage),
+    ]:
         mae, r, rc = safe_metrics(p, y_val)
         n_valid = int((~np.isnan(p) & ~np.isnan(y_val)).sum())
         print(f"  {name:<26s}  {mae:6.2f}  {r:6.3f}  {rc:7.3f}  {n_valid:>9d}")
@@ -115,22 +136,29 @@ def main():
 
     print("\n=== Per-regime MAE ===")
     print(f"{'variant':<28s}  " + "  ".join(f"{lbl:>7s}" for lbl in LEE_BIN_LABELS))
-    for name, p in [("openibis(quazi, paper)", baseline), ("LightGBM Phase 3a", pred)]:
+    for name, p in [
+        ("openibis(quazi, paper)", baseline),
+        ("LightGBM Phase 3a", pred),
+        ("LightGBM + Ellerkmann (3b)", pred_2stage),
+    ]:
         reg = per_regime_mae_safe(y_val, p)
         print(f"  {name:<26s}  " + "  ".join(
             f"{reg[k]:>7.2f}" if not np.isnan(reg[k]) else f"{'nan':>7s}"
             for k in LEE_BIN_LABELS))
 
     # Per-case MAE table for a quick sanity scan
-    print("\n=== Per-val-case MAE: LightGBM vs baseline ===")
+    print("\n=== Per-val-case MAE: baseline / LightGBM / 2-stage ===")
     val_df = df.loc[val_mask].copy()
     val_df["pred_lgbm"] = pred
-    print(f"  {'case':>5s}  {'N':>5s}  {'base':>5s}  {'lgbm':>5s}  {'Δ':>5s}")
+    val_df["pred_2stage"] = pred_2stage
+    print(f"  {'case':>5s}  {'N':>5s}  {'base':>5s}  {'lgbm':>5s}  {'2stg':>5s}  {'Δvs base':>9s}")
     for cid in sorted(val_cases):
         sub = val_df[val_df["case_id"] == cid]
-        b = float(np.mean(np.abs(sub["openibis_quazi"] - sub["target"])))
+        m_b = ~sub["openibis_quazi"].isna()
+        b = float(np.mean(np.abs(sub.loc[m_b, "openibis_quazi"] - sub.loc[m_b, "target"]))) if m_b.any() else float("nan")
         l = float(np.mean(np.abs(sub["pred_lgbm"] - sub["target"])))
-        print(f"  {cid:>5d}  {len(sub):>5d}  {b:5.2f}  {l:5.2f}  {l-b:+5.2f}")
+        t = float(np.mean(np.abs(sub["pred_2stage"] - sub["target"])))
+        print(f"  {cid:>5d}  {len(sub):>5d}  {b:5.2f}  {l:5.2f}  {t:5.2f}  {t-b:+9.2f}")
 
     # Feature importance
     print("\n=== Top 10 feature importance (gain) ===")
