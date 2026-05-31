@@ -1,7 +1,7 @@
 """Smoke tests: every public function returns the right shape on a synthetic input."""
 import numpy as np
 
-from openeeg import openibis, openbsr, emg_correct
+from openeeg import openibis, openbsr, emg_correct, sef, bcsef, beta_ratio, emg_estimate
 
 
 def make_eeg(n_seconds: int = 120, seed: int = 0) -> np.ndarray:
@@ -94,3 +94,41 @@ def test_emg_correct_preserves_nan_in_emg():
     out = emg_correct(bis, emg)
     assert out[0] == 50.0  # NaN EMG → no correction
     assert out[1] < 60.0   # 50 dB → correction applied
+
+
+def test_sef_shape_and_range():
+    eeg = make_eeg()
+    out = sef(eeg)
+    assert out.shape == (expected_n_epochs(len(eeg)),)
+    valid = out[~np.isnan(out)]
+    # Default band is (0.5, 30) → SEF must lie in that band
+    assert (valid >= 0.0).all() and (valid <= 30.0).all()
+
+
+def test_sef_rejects_bad_percentage():
+    import pytest
+    with pytest.raises(ValueError):
+        sef(make_eeg(), percentage=0.0)
+    with pytest.raises(ValueError):
+        sef(make_eeg(), percentage=100.0)
+
+
+def test_bcsef_shape():
+    eeg = make_eeg()
+    out = bcsef(eeg)
+    assert out.shape == (expected_n_epochs(len(eeg)),)
+
+
+def test_beta_ratio_shape():
+    eeg = make_eeg()
+    out = beta_ratio(eeg)
+    assert out.shape == (expected_n_epochs(len(eeg)),)
+
+
+def test_emg_estimate_shape():
+    eeg = make_eeg()
+    out = emg_estimate(eeg)
+    assert out.shape == (expected_n_epochs(len(eeg)),)
+    valid = out[~np.isnan(out)]
+    # dB power is a real scalar — just confirm finite
+    assert np.isfinite(valid).all()

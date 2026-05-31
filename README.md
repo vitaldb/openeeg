@@ -50,6 +50,10 @@ All outputs are at **2 Hz** (one value per 0.5 s epoch). Downsample by 2 to alig
 | `openibis(bsr="quazi")` | Pre-2023 BIS-convention burst-suppression detector | Implemented |
 | `openbsr()` | Connor 2025 OpenBSR | Best-effort (prose-based; Table 1 was a raster image) |
 | `emg_correct()` | Lee 2019 EMG threshold + this repo's 100-case fit | Post-correction; reduces awake (BIS 78–98) MAE by ~28% |
+| `sef()` | Spectral Edge Frequency at p% in a band | Standalone feature |
+| `bcsef()` | Burst-compensated SEF95 (Morimoto 2004) | Standalone feature |
+| `beta_ratio()` | log10(P_30-47 / P_11-20) (Noh 2017; Lee 2019) | Standalone feature |
+| `emg_estimate()` | 47–63 Hz dB band power | Feature only — **not** a `BIS/EMG` replacement (r ≈ 0.32 vs real EMG on 100 cases) |
 
 ## Cohort baseline (val fold, N=100 VitalDB cases, SQI ≥ 80)
 

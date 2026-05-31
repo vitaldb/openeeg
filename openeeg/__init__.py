@@ -14,7 +14,12 @@ for the canonical reference.
 from openeeg.openibis import openibis
 from openeeg.openbsr import openbsr
 from openeeg.correct import emg_correct
+from openeeg.features import sef, bcsef, beta_ratio, emg_estimate
 
 __version__ = "0.0.1"
 
-__all__ = ["openibis", "openbsr", "emg_correct", "__version__"]
+__all__ = [
+    "openibis", "openbsr", "emg_correct",
+    "sef", "bcsef", "beta_ratio", "emg_estimate",
+    "__version__",
+]
