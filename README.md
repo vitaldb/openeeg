@@ -76,14 +76,28 @@ Per-case mean (Phase 0–2):
 | `openibis(bsr="quazi")` | 6.31 | 0.795 | 11.51 | 8.40 |
 | `openibis(bsr="quazi")` + `emg_correct()` | 6.11 | 0.785 | 8.26 | 6.55 |
 
-Epoch-weighted, full val parquet (784,550 epochs):
+Epoch-weighted, val cohort. The current `predict_bis` uses the v2
+model, which targets the **W = 15 s smoothing sub-cohort**
+(~80 % of VitalDB cases) and filters to SQI ≥ 80 only. v2 is more
+accurate on its target cohort; v1 (Phase 3c) is reported for
+historical comparison on the wider mixed-W cohort.
 
-| Variant | MAE | r | Lin's rc | 0-21 | 21-41 | 41-61 | 61-78 | 78-98 |
-|---|---|---|---|---|---|---|---|---|
-| `openibis(quazi, paper)` baseline | 5.90 | 0.764 | 0.756 | 3.77 | 5.91 | 5.68 | 6.31 | 10.73 |
-| `predict_bis(eeg, smooth_W=0)` raw model output | 4.25 | 0.850 | 0.844 | 15.16 | 4.14 | 4.18 | 4.56 | 6.06 |
-| **`predict_bis(eeg)` with default EMA(15 s) post-smooth** | **4.03** | **0.868** | **0.860** | 14.59 | 3.86 | 3.98 | 4.50 | 5.94 |
-| `predict_bis` + Vista oracle inputs (research only) | 3.73 | 0.891 | 0.888 | 1.75 | 3.58 | 3.81 | 3.99 | 5.79 |
+| Variant | Cohort | MAE | r | Lin's rc | 0-21 | 21-41 | 41-61 | 61-78 | 78-98 |
+|---|---|---|---|---|---|---|---|---|---|
+| `openibis(quazi, paper)` baseline | mixed-W (100 cases) | 5.90 | 0.764 | 0.756 | 3.77 | 5.91 | 5.68 | 6.31 | 10.73 |
+| `predict_bis_v1` (Phase 3c) | mixed-W | 4.03 | 0.868 | 0.860 | 14.59 | 3.86 | 3.98 | 4.50 | 5.94 |
+| `predict_bis_v1` on W = 15 only | W = 15 (80 cases) | 3.76 | 0.891 | 0.880 | 7.43 | 3.85 | 3.47 | 4.39 | 5.90 |
+| **`predict_bis_v2` (current, w15 / no weight)** | W = 15 | **3.63** | **0.896** | **0.889** | 6.15 | 3.53 | 3.54 | 4.50 | **5.56** |
+| `predict_bis_v2` raw (`smooth_W=0`) | W = 15 | 3.92 | 0.879 | 0.874 | 6.35 | 3.77 | 3.90 | 4.71 | 5.63 |
+| + Vista oracle inputs (research only) | W = 15 | 3.65 | 0.897 | 0.887 | 5.73 | 3.60 | 3.52 | 4.46 | 5.73 |
+
+The deep regime (BIS < 21) is intentionally left to a rule-based
+override at deployment time — the Ellerkmann formula
+``BIS ≈ 44.1 − BSR / 2.25`` applied when a reliable BSR signal is
+available is far more accurate (MAE ≈ 3.5 on actually-deep epochs)
+than what any LightGBM trained on raw-EEG-derived features can
+reach. The v2 model is therefore tuned for the 21–100 range; ship a
+hybrid wrapper if you need consistent end-to-end deep accuracy.
 
 The EMA(15 s) post-smoothing is empirically aligned with BIS Vista's
 smoothing convention; a sweep over W from 10 to 30 s on the val
