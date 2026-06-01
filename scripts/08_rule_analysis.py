@@ -30,8 +30,8 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-VAL_PARQUET = Path(__file__).resolve().parents[1] / "results" / "features_val_n100.parquet"
-TRAIN_PARQUET = Path(__file__).resolve().parents[1] / "results" / "features_train_n500.parquet"
+VAL_PARQUET = Path(__file__).resolve().parents[1] / "results" / "features_val_n100_v2.parquet"
+TRAIN_PARQUET = Path(__file__).resolve().parents[1] / "results" / "features_train_n500_v2.parquet"
 
 
 def report_rule(name: str, rule_mask: np.ndarray, actual_bin_mask: np.ndarray):
@@ -90,26 +90,38 @@ def main():
 
     bsr_p = df["bsr_paper"].values
     bsr_q = df["bsr_quazi"].values
-    emg   = df["bis_emg_oracle"].values    # the BIS Vista EMG track (dB)
-    sef95 = df["sef95"].values
+    emg   = df["bis_emg_oracle"].values
+    sef95_ours = df["sef95"].values
     br    = df["beta_ratio"].values
     p_beta  = df["p_beta"].values
-    p_theta = df["p_theta"].values
 
-    print("\n=== (1) Lee 2019 published rules on our val cohort ===")
-    print(" [A] 0-21 gate: BSR_quazi > 49.8%")
-    report_rule("Lee rule A", bsr_q > 49.8, deep)
-    print(" [A'] same with BSR_paper > 49.8%")
-    report_rule("paper variant", bsr_p > 49.8, deep)
+    # Vista oracle equivalents (Lee 2019 actually uses these)
+    bsr_vista = df["bis_sr_oracle"].values        # Lee's "BSR"
+    sef_vista = df["bis_sef_oracle"].values       # Lee's "SEF95"
 
-    print("\n [B] 21-61 gate: EMG < 34.2 AND SEF95 < 20.2")
+    print("\n=== (1) Lee 2019 published rules — three input variants ===")
+
+    print("\n [A] 0-21 gate: BSR > 49.8%")
+    for name, bsr_var in [
+        ("BSR_quazi (raw EEG)", bsr_q),
+        ("BSR_paper (raw EEG)", bsr_p),
+        ("BIS/SR  (Vista oracle, Lee's actual input)", bsr_vista),
+    ]:
+        report_rule(name, bsr_var > 49.8, deep)
+
+    print("\n [B] 21-61 gate: EMG < 34.2 AND SEF < 20.2")
     in_bin_B = (a >= 21) & (a < 61)
-    rule_B = (emg < 34.2) & (sef95 < 20.2)
-    report_rule("Lee rule B", rule_B, in_bin_B)
+    for name, sef_var in [
+        ("our SEF95 (raw EEG)", sef95_ours),
+        ("BIS/SEF   (Vista oracle, Lee's actual input)", sef_vista),
+    ]:
+        rule_B = (emg < 34.2) & (sef_var < 20.2)
+        report_rule(name, rule_B, in_bin_B)
 
     print("\n [C] 78-98 gate: NOT B  AND  RBR (beta_ratio) >= -0.7")
-    rule_C = (~rule_B) & (br >= -0.7)
-    report_rule("Lee rule C", rule_C, awake)
+    rule_B_vista = (emg < 34.2) & (sef_vista < 20.2)
+    rule_C = (~rule_B_vista) & (br >= -0.7)
+    report_rule("with Vista SEF in B", rule_C, awake)
 
     print("\n=== (2) Best single-variable threshold per bin on our data ===")
     for name, in_bin, feats in [
