@@ -57,11 +57,22 @@ All outputs are at **2 Hz** (one value per 0.5 s epoch). Downsample by 2 to alig
 
 ## Cohort baseline (val fold, N=100 VitalDB cases, SQI ≥ 80)
 
+Per-case mean (Phase 0–2):
+
 | Variant | MAE mean | r mean | 78-98 MAE | 61-78 MAE |
 |---|---|---|---|---|
 | `openibis(bsr="paper")` | 6.82 | 0.786 | 10.63 | 7.42 |
 | `openibis(bsr="quazi")` | 6.31 | 0.795 | 11.51 | 8.40 |
-| `openibis(bsr="quazi")` + `emg_correct()` | **6.11** | 0.785 | **8.26** | **6.55** |
+| `openibis(bsr="quazi")` + `emg_correct()` | 6.11 | 0.785 | 8.26 | 6.55 |
+
+Epoch-weighted (Phase 3, full 100-case val parquet):
+
+| Variant | MAE | r | Lin's rc | 0-21 | 21-41 | 41-61 | 61-78 | 78-98 |
+|---|---|---|---|---|---|---|---|---|
+| `openibis(quazi, paper)` baseline | 5.90 | 0.764 | 0.756 | 3.77 | 5.91 | 5.68 | 6.31 | 10.73 |
+| **LightGBM** (16 features, 498 train cases) | **4.25** | **0.852** | **0.847** | 15.18 | 4.13 | 4.19 | 4.68 | **5.62** |
+
+The trained model lives at `results/lgbm.txt` (generated locally, not committed). See `scripts/06_extract_features.py` and `scripts/07_train_lightgbm.py` to reproduce.
 
 ## Validation
 
