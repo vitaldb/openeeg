@@ -81,8 +81,15 @@ Epoch-weighted, full val parquet (784,550 epochs):
 | Variant | MAE | r | Lin's rc | 0-21 | 21-41 | 41-61 | 61-78 | 78-98 |
 |---|---|---|---|---|---|---|---|---|
 | `openibis(quazi, paper)` baseline | 5.90 | 0.764 | 0.756 | 3.77 | 5.91 | 5.68 | 6.31 | 10.73 |
-| **`predict_bis()` (15 features, 498 train cases)** | **4.25** | **0.850** | **0.844** | 15.16 | 4.14 | 4.18 | 4.56 | 6.06 |
+| `predict_bis(eeg, smooth_W=0)` raw model output | 4.25 | 0.850 | 0.844 | 15.16 | 4.14 | 4.18 | 4.56 | 6.06 |
+| **`predict_bis(eeg)` with default EMA(15 s) post-smooth** | **4.03** | **0.868** | **0.860** | 14.59 | 3.86 | 3.98 | 4.50 | 5.94 |
 | `predict_bis` + Vista oracle inputs (research only) | 3.73 | 0.891 | 0.888 | 1.75 | 3.58 | 3.81 | 3.99 | 5.79 |
+
+The EMA(15 s) post-smoothing is empirically aligned with BIS Vista's
+smoothing convention; a sweep over W from 10 to 30 s on the val
+cohort puts the minimum at 15 s. Pass ``smooth_W=0`` to get the
+raw, more-dynamic model output (5 % higher MAE against the
+Vista-smoothed reference, but more responsive to fast transitions).
 
 The bundled `predict_bis()` model uses only raw-EEG-derived features
 (no `BIS/EMG`, `BIS/SR`, `BIS/SEF`, `BIS/TOTPOW`). It can therefore

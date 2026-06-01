@@ -167,3 +167,12 @@ def test_predict_bis_rejects_bad_fs():
     import pytest
     with pytest.raises(ValueError):
         predict_bis(make_eeg(), fs=256)
+
+
+def test_predict_bis_smoothing_is_smoother_than_raw():
+    eeg = make_eeg(n_seconds=200, seed=42)
+    raw = predict_bis(eeg, smooth_W=0)
+    sm = predict_bis(eeg, smooth_W=15.0)
+    # Smoothed series should have smaller successive-difference variance.
+    if len(raw) >= 4:
+        assert np.var(np.diff(sm)) <= np.var(np.diff(raw)) + 1e-9
