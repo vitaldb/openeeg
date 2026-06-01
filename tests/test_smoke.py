@@ -1,7 +1,12 @@
 """Smoke tests: every public function returns the right shape on a synthetic input."""
 import numpy as np
 
-from openeeg import openibis, openbsr, emg_correct, sef, bcsef, beta_ratio, emg_estimate
+from openeeg import (
+    openibis, openbsr, emg_correct,
+    sef, bcsef, beta_ratio, emg_estimate,
+    band_power, spectral_entropy,
+    predict_bis,
+)
 
 
 def make_eeg(n_seconds: int = 120, seed: int = 0) -> np.ndarray:
@@ -132,3 +137,33 @@ def test_emg_estimate_shape():
     valid = out[~np.isnan(out)]
     # dB power is a real scalar — just confirm finite
     assert np.isfinite(valid).all()
+
+
+def test_band_power_shape():
+    eeg = make_eeg()
+    out = band_power(eeg, band=(0.5, 4.0))
+    assert out.shape == (expected_n_epochs(len(eeg)),)
+    assert np.isfinite(out[~np.isnan(out)]).all()
+
+
+def test_spectral_entropy_shape():
+    eeg = make_eeg()
+    out = spectral_entropy(eeg)
+    assert out.shape == (expected_n_epochs(len(eeg)),)
+    valid = out[~np.isnan(out)]
+    assert (valid >= 0).all()  # entropy is non-negative
+
+
+def test_predict_bis_shape_and_range():
+    eeg = make_eeg()
+    out = predict_bis(eeg)
+    # predict_bis downsamples 2 Hz → 1 Hz, so we expect floor(N_epochs / 2)
+    expected = expected_n_epochs(len(eeg)) // 2
+    assert abs(len(out) - expected) <= 1, f"got {len(out)}, expected ~{expected}"
+    assert (out >= 0).all() and (out <= 100).all()
+
+
+def test_predict_bis_rejects_bad_fs():
+    import pytest
+    with pytest.raises(ValueError):
+        predict_bis(make_eeg(), fs=256)

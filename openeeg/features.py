@@ -112,6 +112,40 @@ def beta_ratio(eeg, fs: int = 128) -> np.ndarray:
         return np.log10(np.maximum(num / np.maximum(den, 1e-30), 1e-30))
 
 
+def band_power(
+    eeg,
+    fs: int = 128,
+    band: tuple[float, float] = (0.5, 4.0),
+) -> np.ndarray:
+    """Mean dB power in ``band`` per 0.5-s epoch.
+
+    Same PSD path as :func:`openeeg.openibis` so the value lines up
+    with that algorithm's component time series.
+    """
+    if fs != FS:
+        raise ValueError(f"band_power() requires fs=128; got {fs}.")
+    eeg = np.asarray(eeg, dtype=float)
+    psd_arr = _per_epoch_psd(eeg)
+    p = np.nanmean(psd_arr[:, _band(band[0], band[1])], axis=1)
+    return 10.0 * np.log10(np.maximum(p, 1e-30))
+
+
+def spectral_entropy(
+    eeg,
+    fs: int = 128,
+    band: tuple[float, float] = (0.5, 30.0),
+) -> np.ndarray:
+    """Shannon entropy of the normalised PSD over ``band``, per epoch."""
+    if fs != FS:
+        raise ValueError(f"spectral_entropy() requires fs=128; got {fs}.")
+    eeg = np.asarray(eeg, dtype=float)
+    psd_arr = _per_epoch_psd(eeg)
+    sub = psd_arr[:, _band(band[0], band[1])]
+    norm = sub / np.maximum(np.nansum(sub, axis=1, keepdims=True), 1e-30)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return -np.nansum(norm * np.log(np.maximum(norm, 1e-30)), axis=1)
+
+
 def emg_estimate(
     eeg,
     fs: int = 128,

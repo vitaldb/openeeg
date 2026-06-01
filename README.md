@@ -27,32 +27,43 @@ abandoned `openeeg` name proceeds. The Python import name is always
 
 ```python
 import numpy as np
-from openeeg import openibis, openbsr, emg_correct
+from openeeg import predict_bis, openibis, openbsr, emg_correct
 
 # eeg: 1-D numpy array, raw EEG in microvolts, sampled at 128 Hz
-bis = openibis(eeg)                       # Connor 2023 paper-faithful
+
+# === Trained model (recommended) — needs vitaldb-openeeg[predict] ===
+bis = predict_bis(eeg)                    # 1 Hz output, LightGBM trained
+                                          # on 498 VitalDB BIS cases
+
+# === Paper-faithful algorithms (no training, fast) ===
+bis = openibis(eeg)                       # Connor 2023 paper-faithful (2 Hz)
 bis = openibis(eeg, deep="ellerkmann")    # paper + Ellerkmann 2004 deep-regime fit
 bis = openibis(eeg, bsr="quazi")          # pre-2023 QUAZI BSR detector
-bsr_pct = openbsr(eeg)                    # Connor 2025 OpenBSR (frequency-domain)
+bsr_pct = openbsr(eeg)                    # Connor 2024 OpenBSR (frequency-domain)
 
 # Optional EMG-aware post-correction (needs the BIS/EMG track in dB)
 bis = emg_correct(bis, emg_track)         # subtracts 0.54·max(EMG−34,0)
 ```
 
-All outputs are at **2 Hz** (one value per 0.5 s epoch). Downsample by 2 to align with BIS Vista's 1 Hz output.
+`predict_bis` returns at **1 Hz** (matches BIS Vista output rate).
+The paper-faithful `openibis` / `openbsr` return at **2 Hz** (per
+0.5 s epoch); downsample by 2 to align with `predict_bis`.
 
 ## What's implemented
 
 | Function | Reference | Status |
 |---|---|---|
+| `predict_bis()` | LightGBM regressor over 15 spectral features (this repo) | Trained on 498 VitalDB BIS cases; bundled model ships in the wheel |
 | `openibis(deep="paper")` | Connor 2023 (A&A) | Paper-faithful (Table 1 verified) |
 | `openibis(deep="ellerkmann")` | Connor 2023 + Ellerkmann 2004 deep-regime BSR fit | Implemented |
 | `openibis(bsr="quazi")` | Pre-2023 BIS-convention burst-suppression detector | Implemented |
-| `openbsr()` | Connor 2025 OpenBSR | Best-effort (prose-based; Table 1 was a raster image) |
+| `openbsr()` | Connor 2024 OpenBSR | Best-effort (prose-based; Table 1 was a raster image) |
 | `emg_correct()` | Lee 2019 EMG threshold + this repo's 100-case fit | Post-correction; reduces awake (BIS 78–98) MAE by ~28% |
 | `sef()` | Spectral Edge Frequency at p% in a band | Standalone feature |
 | `bcsef()` | Burst-compensated SEF95 (Morimoto 2004) | Standalone feature |
 | `beta_ratio()` | log10(P_30-47 / P_11-20) (Noh 2017; Lee 2019) | Standalone feature |
+| `band_power()` | Mean dB power in any frequency band | Standalone feature |
+| `spectral_entropy()` | Shannon entropy of the normalised PSD | Standalone feature |
 | `emg_estimate()` | 47–63 Hz dB band power | Feature only — **not** a `BIS/EMG` replacement (r ≈ 0.32 vs real EMG on 100 cases) |
 
 ## Cohort baseline (val fold, N=100 VitalDB cases, SQI ≥ 80)
@@ -65,14 +76,25 @@ Per-case mean (Phase 0–2):
 | `openibis(bsr="quazi")` | 6.31 | 0.795 | 11.51 | 8.40 |
 | `openibis(bsr="quazi")` + `emg_correct()` | 6.11 | 0.785 | 8.26 | 6.55 |
 
-Epoch-weighted (Phase 3, full 100-case val parquet):
+Epoch-weighted, full val parquet (784,550 epochs):
 
 | Variant | MAE | r | Lin's rc | 0-21 | 21-41 | 41-61 | 61-78 | 78-98 |
 |---|---|---|---|---|---|---|---|---|
 | `openibis(quazi, paper)` baseline | 5.90 | 0.764 | 0.756 | 3.77 | 5.91 | 5.68 | 6.31 | 10.73 |
-| **LightGBM** (16 features, 498 train cases) | **4.25** | **0.852** | **0.847** | 15.18 | 4.13 | 4.19 | 4.68 | **5.62** |
+| **`predict_bis()` (15 features, 498 train cases)** | **4.25** | **0.850** | **0.844** | 15.16 | 4.14 | 4.18 | 4.56 | 6.06 |
+| `predict_bis` + Vista oracle inputs (research only) | 3.73 | 0.891 | 0.888 | 1.75 | 3.58 | 3.81 | 3.99 | 5.79 |
 
-The trained model lives at `results/lgbm.txt` (generated locally, not committed). See `scripts/06_extract_features.py` and `scripts/07_train_lightgbm.py` to reproduce.
+The bundled `predict_bis()` model uses only raw-EEG-derived features
+(no `BIS/EMG`, `BIS/SR`, `BIS/SEF`, `BIS/TOTPOW`). It can therefore
+run on any 128 Hz EEG channel, not just BIS-sensor data. The
+oracle-augmented variant (Phase 3d/3e) is documented in
+`scripts/07_train_lightgbm.py` and `scripts/10_hybrid_rule_lgbm.py`
+for research reproducibility but is not deployed.
+
+The deep-regime (BIS 0–21) is still a known weak spot — about
+3,000 of 784,550 val epochs, dominated by a single hard case.
+See `scripts/08_rule_analysis.py` for a Lee-2019-style rule
+analysis of where the model misses.
 
 ## Validation
 

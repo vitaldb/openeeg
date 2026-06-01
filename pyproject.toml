@@ -35,10 +35,14 @@ dependencies = [
     "scipy>=1.11",
 ]
 
+# `predict_bis()` needs lightgbm to load the bundled regressor.
+# Install with `pip install vitaldb-openeeg[predict]`.
+
 [project.optional-dependencies]
 vitaldb = ["vitaldb>=1.4"]
 plot = ["matplotlib>=3.7"]
-dev = ["pytest>=7.4", "build>=1.2", "twine>=5.1"]
+predict = ["lightgbm>=4.0"]
+dev = ["pytest>=7.4", "build>=1.2", "twine>=5.1", "lightgbm>=4.0", "pandas>=2.0"]
 
 [project.urls]
 Homepage = "https://github.com/vitaldb/openeeg"
@@ -51,6 +55,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["openeeg"]
+
+# Bundle the deployable LightGBM regressor inside the wheel so
+# ``openeeg.predict_bis()`` works with no extra downloads.
+[tool.hatch.build.targets.wheel.force-include]
+"openeeg/models/predict_bis_v1.txt" = "openeeg/models/predict_bis_v1.txt"
 
 [tool.hatch.build.targets.sdist]
 include = [

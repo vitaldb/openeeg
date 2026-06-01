@@ -14,12 +14,17 @@ for the canonical reference.
 from openeeg.openibis import openibis
 from openeeg.openbsr import openbsr
 from openeeg.correct import emg_correct
-from openeeg.features import sef, bcsef, beta_ratio, emg_estimate
+from openeeg.features import (
+    sef, bcsef, beta_ratio, emg_estimate, band_power, spectral_entropy,
+)
+from openeeg.predict import predict_bis
 
 __version__ = "0.0.1"
 
 __all__ = [
     "openibis", "openbsr", "emg_correct",
     "sef", "bcsef", "beta_ratio", "emg_estimate",
+    "band_power", "spectral_entropy",
+    "predict_bis",
     "__version__",
 ]
