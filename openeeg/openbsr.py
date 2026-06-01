@@ -1,36 +1,44 @@
-"""openbsr — frequency-domain burst-suppression ratio.
+"""openbsr — Connor 2024 OpenBSR, line-by-line port of Table 1.
 
-Reimplemented from the prose description in:
+Source:
+    Connor, C. W. (2024). OpenBSR — an open algorithm for Burst Suppression
+    Rate concordant with the BIS monitor.
 
-    Connor, C. W. (2024). OpenBSR — Open Reimplementation of the BIS
-    Burst Suppression Ratio. (See ``references/2025 Connor, OpenBSR.pdf``.)
+This implementation is a direct Python port of the MATLAB Table 1
+listing. Variable names follow the paper exactly. The previous
+prose-based version diverged in several places (PSD window length,
+single vs averaged threshold, missing refBand and amplitude
+compression) and is replaced here.
 
-The original paper's Table 1 contains the MATLAB source as a raster
-image, so this Python translation is paraphrased from the prose
-description rather than copied verbatim. It is best-effort and should
-be cross-checked against the paper's Table 1 before being relied upon
-clinically.
+Algorithm summary
+-----------------
+For each 0.5-s epoch ``n``:
 
-Algorithm sketch (prose, Connor 2024):
-  * Per 0.5-s epoch, compute spectral power in two bands:
-        HG = mean PSD over 31–47 Hz
-        LL = mean PSD over  1–30 Hz
-  * Mark the epoch suppressed if **both** HG and LL drop below an
-    adaptive threshold.
-  * The threshold is **low** (close to a fixed reference) when the
-    high-gamma power is high relative to the recent spectrogram —
-    i.e. consciousness / sedation, where the chance of suppression
-    is small.
-  * When high-gamma drops, the threshold **rises** in proportion to
-    the 95th-percentile of the 1–20 Hz band power over the **preceding
-    20 minutes**.
-  * The reference power level is calibrated against a sustained 5 µV
-    signal (the same amplitude as Connor 2023's BSR threshold).
-  * BSR = trailing 63-second mean of the per-epoch suppression flag,
-    in percent. Identical to the Connor 2023 window.
+1. Take a 1-s segment of EEG (two strides), starting at sample
+   ``(n + 7.5) * stride`` (1-indexed MATLAB ``(n + 6.5) * stride + 1``).
+2. Compute a Blackman-windowed PSD on that segment after **three
+   passes of 7-SD amplitude compression around the linear baseline**.
+   This is the paper's artefact rejection — outliers beyond 7 σ are
+   pulled smoothly toward the baseline before the FFT.
+3. ``hiBand`` = total dB power in 31–47 Hz; ``loBand`` = total dB
+   power in 1–30 Hz; both with 1 Hz resolution.
+4. Default ``refBand = 19 dB``. If ``loBand − hiBand > 15`` (high
+   band collapsed relative to low band, indicative of suppression
+   onset), raise ``refBand`` to the 1–20 Hz total power, clipped to
+   ``[19, 23]``.
+5. ``refTrend`` = 95th percentile of ``refBand`` over the previous
+   20 minutes (1200 s).
 
-This module is marked experimental and not yet exposed at the package
-top level for that reason.
+After the loop:
+
+6. ``hiBand`` is floored at ``piecewise(refTrend, [19,23], [-16,-14])``
+   to prevent the high band from going below the trend.
+7. ``threshold = dBref · piecewise(refTrend, [19,23], [-0.3,-0.1])``
+   where ``dBref = 20·log10(5)``.
+8. ``BSRmap[n] = (loBand[n] + hiBand[n]) / 2 < threshold[n]``.
+9. ``BSR`` = trailing 63-second mean of ``BSRmap`` × 100, in percent.
+
+Returned series is at 2 Hz (one value per 0.5-s epoch).
 """
 from __future__ import annotations
 
@@ -39,118 +47,143 @@ import scipy.signal as signal
 
 FS = 128
 STRIDE_SEC = 0.5
-STRIDE = int(FS * STRIDE_SEC)
+STRIDE = int(FS * STRIDE_SEC)          # 64 samples
+DBREF = 20.0 * np.log10(5.0)           # ≈ 13.98 dB (5 µV reference)
+TREND_SEC = 1200                       # 20 minutes
+BSR_WIN_SEC = 63                       # trailing mean window
 
 
-def _psd_simple(x: np.ndarray) -> np.ndarray:
-    """One-sided Blackman PSD."""
-    w = signal.windows.blackman(len(x))
-    f = np.fft.fft(w * (x - x.mean()))
+def _n_epochs(eeg: np.ndarray) -> int:
+    """Paper's ``nEpochs``: floor((L - Fs) / nStride) − 10."""
+    return int(np.floor((len(eeg) - FS) / STRIDE) - 10)
+
+
+def _baseline(x: np.ndarray) -> np.ndarray:
+    """Linear-regression baseline of x (matches paper's ``baseline``)."""
     n = len(x)
-    return 2.0 * np.abs(f[: n // 2]) ** 2 / (n * np.sum(w ** 2))
+    v = np.column_stack([np.ones(n), np.arange(1, n + 1, dtype=float)])
+    coef, *_ = np.linalg.lstsq(v, x, rcond=None)
+    return v @ coef
 
 
-def _reference_power() -> float:
-    """Reference high-gamma power from a sustained 5-µV sinusoid.
+def _bound(x, lo, hi):
+    """Paper's ``bound`` — clamp scalar/array to [lo, hi]."""
+    return np.minimum(np.maximum(x, lo), hi)
 
-    Used to scale the adaptive threshold so that, at the no-suppression
-    floor, an epoch with 5 µV-equivalent activity above 31 Hz is *not*
-    flagged as suppressed.
+
+def _piecewise(x, xp, yp):
+    """Paper's ``piecewise`` — linear interp with end-clamp."""
+    return np.interp(_bound(x, xp[0], xp[-1]), xp, yp)
+
+
+def _psd(seg: np.ndarray, compressions: int = 3) -> np.ndarray:
+    """Blackman PSD with iterative 7-σ amplitude compression.
+
+    Mirrors paper's ``powerSpectralDensity``: for ``compressions``
+    iterations, soft-saturate samples lying beyond 7 standard
+    deviations from a linear baseline, then FFT the result.
     """
-    n = 4 * STRIDE  # 2 seconds, matching the openibis PSD window
-    t = np.arange(n) / FS
-    # 35 Hz mid-HG carrier at 5 µV peak; phase irrelevant
-    ref = 5.0 * np.sin(2.0 * np.pi * 35.0 * t)
-    P = _psd_simple(ref)
-    # mean PSD over 31–47 Hz, in dB
-    bin_hz = FS / n  # 0.5
-    lo, hi = int(31 / bin_hz), int(47 / bin_hz) + 1
-    return float(np.mean(10.0 * np.log10(np.maximum(P[lo:hi], 1e-30))))
+    x = seg.astype(float).copy()
+    for _ in range(compressions):
+        base = _baseline(x)
+        limit = 7.0 * float(np.std(x, ddof=0))
+        if limit <= 0:
+            break
+        dx = x - base
+        ratio = np.clip(dx / limit, -1.0, 1.0)
+        x = base + (1.0 - ratio ** 2) ** 2 * dx
+    n = len(x)
+    win = signal.windows.blackman(n)
+    f = np.fft.fft(win * (x - _baseline(x)))
+    return 2.0 * np.abs(f[: n // 2]) ** 2 / (n * np.sum(win ** 2))
+
+
+def _band_idx(from_hz: float, to_hz: float, bin_hz: float = 1.0) -> np.ndarray:
+    """Paper's ``bandRange`` in 0-indexed form (bins from_hz..to_hz inclusive)."""
+    return np.arange(int(from_hz / bin_hz), int(to_hz / bin_hz) + 1)
+
+
+def _total_power(psd_arr: np.ndarray, from_hz: float, to_hz: float,
+                 bin_hz: float = 1.0) -> float:
+    """Paper's ``totalPower``: 10·log10(Σ |X[k]|^2) over the band, NaN-as-0."""
+    sub = psd_arr[_band_idx(from_hz, to_hz, bin_hz)]
+    s = float(np.nansum(sub))
+    if s <= 0:
+        return -np.inf
+    return 10.0 * np.log10(s)
 
 
 def openbsr(eeg, fs: int = 128) -> np.ndarray:
-    """Compute OpenBSR burst-suppression ratio (percent) at 2 Hz.
+    """Compute OpenBSR (Connor 2024) burst-suppression ratio at 2 Hz.
 
     Parameters
     ----------
     eeg : array-like, 1-D
-        Raw EEG in µV, sampled at 128 Hz.
+        Raw EEG in microvolts. Must be sampled at 128 Hz.
+    fs : int, default 128
+        Only 128 Hz is supported (BIS standard).
 
     Returns
     -------
     np.ndarray of shape (N,)
-        BSR percentage trajectory, 2 Hz.
-
-    Notes
-    -----
-    Frequency-domain detector with an adaptive threshold. See module
-    docstring for algorithm sketch. Best-effort prose-based port; not
-    yet validated bit-for-bit against the paper's Table 1.
+        BSR percentage trajectory at 2 Hz (one value per 0.5-s epoch).
     """
-    eeg = np.asarray(eeg, dtype=float)
     if fs != FS:
         raise ValueError(f"openbsr() requires fs=128; got {fs}.")
+    eeg = np.asarray(eeg, dtype=float)
 
-    psd_window = 4 * STRIDE  # 2 s
-    bin_hz = FS / psd_window  # 0.5 Hz
-    hg_lo, hg_hi = int(31 / bin_hz), int(47 / bin_hz) + 1
-    ll_lo, ll_hi = int(1 / bin_hz), int(30 / bin_hz) + 1
-    lo20_lo, lo20_hi = int(1 / bin_hz), int(20 / bin_hz) + 1
-
-    N = int(np.floor((len(eeg) - FS) / STRIDE) - 10)
+    N = _n_epochs(eeg)
     if N <= 0:
         return np.empty(0)
 
-    hg_db = np.full(N, np.nan)  # high-gamma dB power per epoch
-    ll_db = np.full(N, np.nan)  # low-band dB power
-    lo20_db = np.full(N, np.nan)  # 1–20 Hz dB power (for threshold history)
+    lo_band  = np.full(N, np.nan)
+    hi_band  = np.full(N, np.nan)
+    ref_band = np.full(N, 19.0)
+    ref_trend = np.full(N, 19.0)
+
+    K_trend = int(TREND_SEC / STRIDE_SEC)  # 2400 strides
 
     for n in range(N):
-        s = (n + 4) * STRIDE
-        e = s + psd_window
+        # Paper (MATLAB 1-indexed n): segment(eeg, n+6.5, 2, nStride)
+        # Python (0-indexed n) ↔ MATLAB n+1, so:
+        #   start_sample = (n + 1 + 6.5) * stride = (n + 7.5) * stride
+        s = int((n + 7.5) * STRIDE)
+        e = s + 2 * STRIDE
         if e > len(eeg):
             continue
-        P = _psd_simple(eeg[s:e])
-        hg_db[n] = 10.0 * np.log10(np.maximum(np.mean(P[hg_lo:hg_hi]), 1e-30))
-        ll_db[n] = 10.0 * np.log10(np.maximum(np.mean(P[ll_lo:ll_hi]), 1e-30))
-        lo20_db[n] = 10.0 * np.log10(np.maximum(np.mean(P[lo20_lo:lo20_hi]), 1e-30))
+        seg = eeg[s:e]
+        if np.isnan(seg).any():
+            continue
 
-    ref_db = _reference_power()  # ≈ HG dB for sustained 5-µV signal
+        psd = _psd(seg, compressions=3)
+        hi_band[n] = _total_power(psd, 31, 47, bin_hz=1.0)
+        lo_band[n] = _total_power(psd, 1, 30, bin_hz=1.0)
 
-    # 20-minute trailing 95th percentile of 1–20 Hz dB power
-    W = int(20 * 60 / STRIDE_SEC)  # = 2400 strides
-    pct95 = np.full(N, np.nan)
-    for i in range(N):
-        j = max(0, i - W + 1)
-        seg = lo20_db[j : i + 1]
-        seg = seg[~np.isnan(seg)]
-        if len(seg) > 0:
-            pct95[i] = float(np.percentile(seg, 95))
+        # Default refBand = 19 dB; raise it when high band collapses
+        ref_band[n] = 19.0
+        if (lo_band[n] - hi_band[n]) > 15.0:
+            p120 = _total_power(psd, 1, 20, bin_hz=1.0)
+            ref_band[n] = _bound(p120, 19.0, 23.0)
 
-    # Recent (~63 s) median of HG dB, used to decide if HG is "high"
-    K = int(63.0 / STRIDE_SEC)
-    hg_recent_med = np.full(N, np.nan)
-    for i in range(N):
-        j = max(0, i - K + 1)
-        seg = hg_db[j : i + 1]
-        seg = seg[~np.isnan(seg)]
-        if len(seg) > 0:
-            hg_recent_med[i] = float(np.median(seg))
+        # 20-min trailing 95th percentile of refBand
+        lo = max(0, n - K_trend + 1)
+        window = ref_band[lo : n + 1]
+        ref_trend[n] = float(np.percentile(window, 95))
 
-    # Adaptive threshold (in dB):
-    #   when HG is high relative to recent median → threshold ≈ ref_db (low)
-    #   when HG drops → threshold rises toward the 95-th percentile of LL
-    # Blend factor σ ∈ [0,1] from a smoothstep on (hg_db − hg_recent_med + 6 dB).
-    delta = hg_db - hg_recent_med
-    sigma = 1.0 - np.clip((delta + 6.0) / 12.0, 0.0, 1.0)
-    threshold_db = ref_db * (1.0 - sigma) + pct95 * sigma
+    # Floor on hiBand: prevent it dropping below the trend limit
+    floor_hi = _piecewise(ref_trend, [19.0, 23.0], [-16.0, -14.0])
+    hi_band = np.maximum(hi_band, floor_hi)
 
-    # An epoch is suppressed if BOTH HG and LL are below threshold.
-    BSRmap = (hg_db < threshold_db) & (ll_db < threshold_db)
-    BSRmap[np.isnan(threshold_db) | np.isnan(hg_db) | np.isnan(ll_db)] = False
+    # Threshold scaled by refTrend
+    threshold = DBREF * _piecewise(ref_trend, [19.0, 23.0], [-0.3, -0.1])
 
-    # Trailing 63-second mean (same window as Connor 2023)
-    cs = np.concatenate([[0.0], np.cumsum(BSRmap.astype(float))])
+    # Suppression flag: average band power below threshold
+    band_mean = (lo_band + hi_band) / 2.0
+    BSRmap = np.where(np.isnan(band_mean), False, band_mean < threshold)
+
+    # Trailing 63-s mean
+    K = int(BSR_WIN_SEC / STRIDE_SEC)  # 126 strides
+    cs = np.concatenate(([0.0], np.cumsum(BSRmap.astype(float))))
     BSR = np.empty(N)
     for i in range(N):
         j = max(0, i - K + 1)
