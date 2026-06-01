@@ -120,9 +120,14 @@ def features_for_case(case: dict) -> pd.DataFrame | None:
     })
 
     # Align targets / oracle features (already at 1 Hz)
-    n = min(len(feat), len(case["bis"]), len(case["sqi"]), len(case["emg"]))
+    n = min(len(feat), len(case["bis"]), len(case["sqi"]),
+            len(case["emg"]), len(case["sef"]),
+            len(case["sr"]), len(case["totpow"]))
     feat = feat.iloc[:n].copy()
     feat["bis_emg_oracle"] = case["emg"][:n]
+    feat["bis_sef_oracle"] = case["sef"][:n]
+    feat["bis_sr_oracle"]  = case["sr"][:n]   # Lee 2019's "BSR"
+    feat["bis_totpow_oracle"] = case["totpow"][:n]
     feat["target"] = case["bis"][:n]
     feat["sqi"] = case["sqi"][:n]
     feat["case_id"] = case["caseid"]

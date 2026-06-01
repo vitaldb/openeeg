@@ -12,7 +12,13 @@ import vitaldb
 FS = 128
 
 # Tracks every BIS-monitored VitalDB case provides.
-BIS_TRACKS = ("BIS/EEG1_WAV", "BIS/BIS", "BIS/SQI", "BIS/SR", "BIS/EMG")
+BIS_TRACKS = (
+    "BIS/EEG1_WAV", "BIS/BIS", "BIS/SQI",
+    "BIS/SR",      # BIS Vista's published Suppression Ratio (= Lee 2019 "BSR")
+    "BIS/EMG",     # BIS Vista's EMG amplitude in dB
+    "BIS/SEF",     # BIS Vista's Spectral Edge Frequency 95%
+    "BIS/TOTPOW",  # BIS Vista's total EEG power in dB
+)
 
 # If you have a local copy of the VitalDB Open Dataset .vital files,
 # set VITALDB_DATA_ROOT to that directory and load_case() will read
@@ -103,8 +109,9 @@ def load_case(
 
     try:
         eeg = vf.to_numpy(["BIS/EEG1_WAV"], 1.0 / FS).flatten()
-        rest = vf.to_numpy(["BIS/BIS", "BIS/SQI", "BIS/SR", "BIS/EMG"], 1.0)
-        if rest.shape[1] != 4 or len(eeg) < FS * 60:
+        rest = vf.to_numpy(
+            ["BIS/BIS", "BIS/SQI", "BIS/SR", "BIS/EMG", "BIS/SEF", "BIS/TOTPOW"], 1.0)
+        if rest.shape[1] != 6 or len(eeg) < FS * 60:
             return None
     except Exception:
         return None
@@ -113,10 +120,12 @@ def load_case(
         "caseid": caseid,
         "fs": FS,
         "eeg": eeg,
-        "bis": rest[:, 0],
-        "sqi": rest[:, 1],
-        "sr":  rest[:, 2],
-        "emg": rest[:, 3],
+        "bis":    rest[:, 0],
+        "sqi":    rest[:, 1],
+        "sr":     rest[:, 2],
+        "emg":    rest[:, 3],
+        "sef":    rest[:, 4],
+        "totpow": rest[:, 5],
     }
 
 
