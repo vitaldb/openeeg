@@ -8,7 +8,10 @@ Thumbs.db
 venv/
 .env
 
-# Agent-extracted text caches (regeneratable from the PDFs)
+# Reference materials — kept locally for citation lookup only, never
+# committed. Most are copyrighted academic PDFs we have no right to
+# redistribute. Re-download from PMC / journal sites if needed.
+references/
 references/_txt/
 
 # Build artifacts
