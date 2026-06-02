@@ -176,3 +176,20 @@ def test_predict_bis_smoothing_is_smoother_than_raw():
     # Smoothed series should have smaller successive-difference variance.
     if len(raw) >= 4:
         assert np.var(np.diff(sm)) <= np.var(np.diff(raw)) + 1e-9
+
+
+def test_predict_bis_ellerkmann_pulls_isoelectric_low():
+    # An almost-isoelectric EEG must trip the mandatory openbsr → Ellerkmann
+    # override and produce predictions in the deep range (BIS ≤ ~5).
+    # There is no opt-out for the override; every predict_bis_* function
+    # routes through openeeg.postprocess.apply_ellerkmann_and_smooth.
+    rng = np.random.default_rng(13)
+    eeg = 0.3 * rng.standard_normal(60 * 128)  # ~0.3 µV white noise
+    pred = predict_bis(eeg, smooth_W=0)
+    finite = pred[np.isfinite(pred)]
+    if finite.size > 20:
+        med = float(np.median(finite[10:]))
+        assert med <= 5.0, (
+            f"Ellerkmann override must drive isoelectric BIS into the "
+            f"deep range; got median {med:.2f}"
+        )

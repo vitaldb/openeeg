@@ -19,3 +19,9 @@ build/
 dist/
 *.egg-info/
 .pytest_cache/
+
+# Result artifacts: parquet caches, large feature matrices, plots,
+# CNN checkpoints, intermediate CSVs. Reproducible via scripts/.
+results/
+.cache/
+.claude/

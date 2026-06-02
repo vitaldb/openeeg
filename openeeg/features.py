@@ -146,6 +146,100 @@ def spectral_entropy(
         return -np.nansum(norm * np.log(np.maximum(norm, 1e-30)), axis=1)
 
 
+def _higuchi_fd_window(x: np.ndarray, k_max: int = 6) -> float:
+    """Higuchi 1988 fractal dimension of a 1-D series.
+
+    Returns the slope of log(L_avg(k)) vs log(1/k) for k = 1..k_max.
+    Used by :func:`fdsr` (Cusenza 2013) — see that function for the
+    BSR-blended deployable wrapper.
+    """
+    N = len(x)
+    if N < 4:
+        return float("nan")
+    L_k = np.zeros(k_max, dtype=float)
+    for k in range(1, k_max + 1):
+        L_m = []
+        for m in range(k):
+            n_max = (N - m - 1) // k
+            if n_max < 1:
+                continue
+            idx = m + np.arange(n_max + 1) * k
+            diff_sum = float(np.sum(np.abs(np.diff(x[idx]))))
+            norm = (N - 1) / (n_max * k * k)
+            L_m.append(norm * diff_sum)
+        if L_m:
+            L_k[k - 1] = float(np.mean(L_m))
+    valid = L_k > 0
+    if valid.sum() < 2:
+        return float("nan")
+    log_inv_k = np.log(1.0 / np.arange(1, k_max + 1)[valid])
+    log_L = np.log(L_k[valid])
+    slope, _ = np.polyfit(log_inv_k, log_L, 1)
+    return float(slope)
+
+
+def higuchi_fd(
+    eeg,
+    fs: int = 128,
+    k_max: int = 6,
+    band: tuple[float, float] = (6.0, 40.0),
+    window_s: float = 10.0,
+) -> np.ndarray:
+    """Higuchi fractal dimension over a rolling window — Cusenza 2013.
+
+    Returns one FD value per 0.5-s epoch (2 Hz cadence, matching other
+    features). Each value is the Higuchi FD over a ``window_s``-second
+    window of ``band``-bandpassed EEG. The 6–40 Hz band and 10-s
+    window are Cusenza's published settings; FD is typically in
+    [1.0, 2.0].
+    """
+    if fs != FS:
+        raise ValueError(f"higuchi_fd() requires fs=128; got {fs}.")
+    eeg = np.asarray(eeg, dtype=float)
+    # 6–40 Hz bandpass per Cusenza
+    sos = signal.butter(4, [band[0] / (fs / 2.0), band[1] / (fs / 2.0)],
+                         btype="band", output="sos")
+    eeg_bp = signal.sosfiltfilt(sos, eeg)
+    win = int(round(window_s * fs))
+    stride = STRIDE  # match other features' 0.5-s stride
+    n_epochs = _n_epochs(eeg)
+    out = np.full(n_epochs, np.nan)
+    for n in range(n_epochs):
+        s = (n + 4) * stride  # match openibis offset
+        e = s + win
+        if e > len(eeg_bp):
+            continue
+        out[n] = _higuchi_fd_window(eeg_bp[s:e], k_max=k_max)
+    return out
+
+
+def se50d(
+    eeg,
+    fs: int = 128,
+    band: tuple[float, float] = (0.5, 47.0),
+) -> np.ndarray:
+    """SE50d — median frequency of the 1st-derivative EEG (Sleigh 2001).
+
+    Sleigh et al. 2001 (BJA 86:50) showed the median frequency of the
+    EEG's time-derivative discriminates awake-vs-asleep with ROC AUC
+    equal to BIS during induction. Thresholds:
+
+      * ``SE50d < 17 Hz`` → 100% PPV asleep
+      * ``SE50d ∈ [17, 21) Hz`` → uncertain
+      * ``SE50d ≥ 21 Hz`` → awake
+
+    Returns values in Hz at 2 Hz cadence. Use
+    :func:`openeeg.rules.sleigh_gate` for the threshold rule itself.
+    """
+    if fs != FS:
+        raise ValueError(f"se50d() requires fs=128; got {fs}.")
+    eeg = np.asarray(eeg, dtype=float)
+    deriv = np.diff(eeg)
+    # Pad to original length so epoch indexing remains consistent
+    deriv = np.concatenate([[deriv[0]], deriv]) if len(deriv) > 0 else deriv
+    return sef(deriv, fs=fs, percentage=50.0, band=band)
+
+
 def emg_estimate(
     eeg,
     fs: int = 128,

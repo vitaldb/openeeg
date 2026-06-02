@@ -1,0 +1,1231 @@
+{
+  "variant": "raw",
+  "partition": "data",
+  "feature_cols": [
+    "openibis_paper",
+    "openibis_quazi",
+    "openibis_quazi_30s",
+    "bsr_paper",
+    "bsr_quazi",
+    "sef95",
+    "bcsef",
+    "beta_ratio",
+    "emg_proxy",
+    "p_delta",
+    "p_theta",
+    "p_alpha",
+    "p_beta",
+    "p_lowgamma",
+    "spectral_entropy",
+    "openibis_quazi_5s",
+    "openibis_quazi_10s",
+    "openibis_quazi_60s",
+    "openibis_quazi_dt",
+    "openibis_quazi_30s_dt",
+    "sef95_dt",
+    "emg_proxy_dt",
+    "openbsr"
+  ],
+  "deep_rule": {
+    "feature": "openbsr",
+    "threshold": 49.8,
+    "formula": "BIS = 44.1 - openbsr/2.25"
+  },
+  "leaves": [
+    {
+      "leaf": 5,
+      "n_train": 27343,
+      "n_val": 3387,
+      "features": [
+        "openibis_quazi_60s",
+        "bsr_paper",
+        "openbsr",
+        "bsr_quazi",
+        "openibis_quazi_10s",
+        "openibis_quazi",
+        "openibis_quazi_5s",
+        "openibis_quazi_30s"
+      ],
+      "intercept": 11.642295837402344,
+      "coefs": [
+        0.4177210330963135,
+        1.0219789743423462,
+        -1.1814191341400146,
+        0.3464261293411255,
+        -0.11779540777206421,
+        0.3240385949611664,
+        -0.092292919754982,
+        0.14612087607383728
+      ]
+    },
+    {
+      "leaf": 6,
+      "n_train": 52350,
+      "n_val": 9599,
+      "features": [
+        "p_theta",
+        "bsr_quazi",
+        "openibis_quazi_30s",
+        "openibis_quazi_60s",
+        "bsr_paper",
+        "spectral_entropy",
+        "p_alpha",
+        "openbsr"
+      ],
+      "intercept": 17.977458953857422,
+      "coefs": [
+        -0.2299654334783554,
+        0.22646431624889374,
+        0.5692397952079773,
+        0.08585131913423538,
+        0.36839014291763306,
+        -1.5621545314788818,
+        0.12473894655704498,
+        -0.40853893756866455
+      ]
+    },
+    {
+      "leaf": 8,
+      "n_train": 92649,
+      "n_val": 21000,
+      "features": [
+        "p_theta",
+        "openibis_quazi_30s",
+        "bsr_quazi",
+        "openibis_quazi_10s",
+        "openibis_quazi_5s",
+        "openibis_paper",
+        "spectral_entropy",
+        "openibis_quazi"
+      ],
+      "intercept": 13.305511474609375,
+      "coefs": [
+        -0.11680089682340622,
+        0.4953158497810364,
+        0.09162973612546921,
+        0.2794119119644165,
+        -0.20196588337421417,
+        -0.019891226664185524,
+        -0.6984182596206665,
+        0.19327858090400696
+      ]
+    },
+    {
+      "leaf": 9,
+      "n_train": 107931,
+      "n_val": 30085,
+      "features": [
+        "openibis_quazi_30s",
+        "openibis_quazi_10s",
+        "openibis_quazi_5s",
+        "beta_ratio",
+        "openibis_quazi",
+        "openibis_quazi_60s",
+        "bsr_quazi",
+        "p_theta"
+      ],
+      "intercept": 5.51429557800293,
+      "coefs": [
+        0.5787094235420227,
+        0.22873565554618835,
+        -0.12033329904079437,
+        -2.1506056785583496,
+        0.057151664048433304,
+        0.04661853611469269,
+        0.08604636043310165,
+        -0.07233477383852005
+      ]
+    },
+    {
+      "leaf": 12,
+      "n_train": 1009955,
+      "n_val": 231943,
+      "features": [
+        "openibis_paper",
+        "spectral_entropy",
+        "beta_ratio",
+        "sef95",
+        "p_beta",
+        "bcsef",
+        "p_alpha",
+        "bsr_quazi"
+      ],
+      "intercept": 17.354406356811523,
+      "coefs": [
+        0.5422081351280212,
+        0.0046887025237083435,
+        0.0013857583981007338,
+        0.040419530123472214,
+        0.050654374063014984,
+        0.0389595665037632,
+        0.09911088645458221,
+        -0.07691293954849243
+      ]
+    },
+    {
+      "leaf": 13,
+      "n_train": 44079,
+      "n_val": 4814,
+      "features": [
+        "openbsr",
+        "emg_proxy",
+        "openibis_quazi_60s",
+        "bsr_paper",
+        "bsr_quazi",
+        "p_theta",
+        "openibis_quazi",
+        "openibis_quazi_5s"
+      ],
+      "intercept": 59.95362854003906,
+      "coefs": [
+        -0.46836018562316895,
+        0.15695741772651672,
+        0.21420182287693024,
+        0.1794239729642868,
+        -0.09812256693840027,
+        0.06455186754465103,
+        -0.2842675745487213,
+        -0.21194441616535187
+      ]
+    },
+    {
+      "leaf": 14,
+      "n_train": 10000,
+      "n_val": 572,
+      "features": [
+        "openbsr",
+        "openibis_paper",
+        "bsr_paper",
+        "openibis_quazi_60s",
+        "p_lowgamma",
+        "openibis_quazi_10s",
+        "openibis_quazi_5s",
+        "bsr_quazi"
+      ],
+      "intercept": -19.89736557006836,
+      "coefs": [
+        -1.0028375387191772,
+        0.6013103723526001,
+        0.16364848613739014,
+        0.4082975685596466,
+        -0.030073044821619987,
+        0.27621135115623474,
+        -0.03029683791100979,
+        0.4369480609893799
+      ]
+    },
+    {
+      "leaf": 18,
+      "n_train": 180594,
+      "n_val": 33473,
+      "features": [
+        "beta_ratio",
+        "p_beta",
+        "openibis_quazi_30s",
+        "spectral_entropy",
+        "openibis_paper",
+        "openibis_quazi",
+        "p_alpha",
+        "sef95"
+      ],
+      "intercept": 3.668537139892578,
+      "coefs": [
+        -2.8946409225463867,
+        0.2942795753479004,
+        0.5208812355995178,
+        1.381182312965393,
+        0.14367780089378357,
+        0.1410667896270752,
+        -0.06417841464281082,
+        -0.11952973157167435
+      ]
+    },
+    {
+      "leaf": 19,
+      "n_train": 158020,
+      "n_val": 36076,
+      "features": [
+        "p_beta",
+        "beta_ratio",
+        "p_alpha",
+        "spectral_entropy",
+        "bcsef",
+        "sef95",
+        "p_theta",
+        "openibis_quazi_30s"
+      ],
+      "intercept": 2.2444076538085938,
+      "coefs": [
+        0.28691545128822327,
+        -2.966622829437256,
+        -0.06662505120038986,
+        1.3030891418457031,
+        -0.046092625707387924,
+        -0.04609331116080284,
+        0.09499894827604294,
+        0.8192048668861389
+      ]
+    },
+    {
+      "leaf": 21,
+      "n_train": 102123,
+      "n_val": 25154,
+      "features": [
+        "beta_ratio",
+        "p_beta",
+        "p_alpha",
+        "spectral_entropy",
+        "openibis_quazi_10s",
+        "sef95",
+        "bcsef",
+        "openibis_quazi_5s"
+      ],
+      "intercept": 7.360172271728516,
+      "coefs": [
+        -2.580759286880493,
+        0.2660352885723114,
+        -0.010548469610512257,
+        2.052234649658203,
+        0.6101406812667847,
+        -0.03537729009985924,
+        -0.03537851199507713,
+        0.07309068739414215
+      ]
+    },
+    {
+      "leaf": 22,
+      "n_train": 111532,
+      "n_val": 22728,
+      "features": [
+        "p_beta",
+        "beta_ratio",
+        "p_alpha",
+        "spectral_entropy",
+        "openibis_quazi_30s",
+        "openibis_paper",
+        "openibis_quazi",
+        "sef95"
+      ],
+      "intercept": 4.454151153564453,
+      "coefs": [
+        0.2617054283618927,
+        -2.7568631172180176,
+        0.0423082672059536,
+        1.6716320514678955,
+        0.574665904045105,
+        0.09898863732814789,
+        0.09739471226930618,
+        -0.10759519785642624
+      ]
+    },
+    {
+      "leaf": 25,
+      "n_train": 433444,
+      "n_val": 67427,
+      "features": [
+        "openbsr",
+        "openibis_paper",
+        "spectral_entropy",
+        "openibis_quazi_30s",
+        "openibis_quazi_5s",
+        "openibis_quazi",
+        "openibis_quazi_10s",
+        "bsr_quazi"
+      ],
+      "intercept": 19.467588424682617,
+      "coefs": [
+        -0.6455262899398804,
+        0.9290516376495361,
+        1.3863379955291748,
+        -0.07989709824323654,
+        0.06941137462854385,
+        -0.6223111748695374,
+        0.11784619837999344,
+        -0.27656447887420654
+      ]
+    },
+    {
+      "leaf": 26,
+      "n_train": 49280,
+      "n_val": 9274,
+      "features": [
+        "openibis_quazi_10s",
+        "openibis_quazi_60s",
+        "bsr_quazi",
+        "openibis_quazi_5s",
+        "beta_ratio",
+        "spectral_entropy",
+        "openibis_quazi_30s",
+        "openibis_quazi"
+      ],
+      "intercept": 5.738094329833984,
+      "coefs": [
+        0.7263635396957397,
+        0.2947240471839905,
+        -0.22404807806015015,
+        -0.3097674250602722,
+        -1.9577233791351318,
+        2.061210870742798,
+        -0.2852206826210022,
+        0.2876298427581787
+      ]
+    },
+    {
+      "leaf": 28,
+      "n_train": 58517,
+      "n_val": 16565,
+      "features": [
+        "beta_ratio",
+        "openibis_paper",
+        "bsr_paper",
+        "openibis_quazi_30s",
+        "openibis_quazi",
+        "openibis_quazi_5s",
+        "openibis_quazi_10s",
+        "openbsr"
+      ],
+      "intercept": -20.43193817138672,
+      "coefs": [
+        -8.360111236572266,
+        0.5952531099319458,
+        0.8954948782920837,
+        0.7458489537239075,
+        -0.2986993193626404,
+        -0.29946357011795044,
+        0.20828194916248322,
+        -0.43072599172592163
+      ]
+    },
+    {
+      "leaf": 29,
+      "n_train": 168433,
+      "n_val": 26459,
+      "features": [
+        "openibis_paper",
+        "openibis_quazi_60s",
+        "openibis_quazi_30s",
+        "openibis_quazi_10s",
+        "openibis_quazi_5s",
+        "openibis_quazi",
+        "bsr_paper",
+        "spectral_entropy"
+      ],
+      "intercept": -2.301982879638672,
+      "coefs": [
+        0.5706193447113037,
+        0.21003349125385284,
+        0.33005207777023315,
+        0.08206326514482498,
+        0.06379047781229019,
+        -0.42776307463645935,
+        0.32500314712524414,
+        1.0853815078735352
+      ]
+    },
+    {
+      "leaf": 34,
+      "n_train": 79762,
+      "n_val": 12862,
+      "features": [
+        "openibis_quazi_10s",
+        "p_beta",
+        "openibis_quazi_5s",
+        "bcsef",
+        "sef95",
+        "spectral_entropy",
+        "openibis_quazi_30s",
+        "openibis_paper"
+      ],
+      "intercept": 15.012943267822266,
+      "coefs": [
+        0.8056446313858032,
+        0.25909602642059326,
+        -0.37721434235572815,
+        0.061348941177129745,
+        0.04884997382760048,
+        1.7925881147384644,
+        -0.027761533856391907,
+        0.22011151909828186
+      ]
+    },
+    {
+      "leaf": 35,
+      "n_train": 34200,
+      "n_val": 5270,
+      "features": [
+        "openibis_quazi_10s",
+        "openibis_quazi_60s",
+        "openibis_quazi_5s",
+        "bcsef",
+        "bsr_quazi",
+        "sef95",
+        "beta_ratio",
+        "p_beta"
+      ],
+      "intercept": 14.268890380859375,
+      "coefs": [
+        0.3320273756980896,
+        0.2166074812412262,
+        0.07434803247451782,
+        0.2771162688732147,
+        -2.6842403411865234,
+        -0.13171882927417755,
+        -1.8908106088638306,
+        0.19394665956497192
+      ]
+    },
+    {
+      "leaf": 37,
+      "n_train": 28079,
+      "n_val": 4675,
+      "features": [
+        "beta_ratio",
+        "bsr_paper",
+        "openibis_quazi_60s",
+        "openibis_quazi_10s",
+        "bsr_quazi",
+        "openibis_paper",
+        "p_delta",
+        "spectral_entropy"
+      ],
+      "intercept": 8.580272674560547,
+      "coefs": [
+        -3.44113826751709,
+        0.7363933324813843,
+        0.19984649121761322,
+        -0.14428222179412842,
+        -0.3604298532009125,
+        0.5496784448623657,
+        -0.10867955535650253,
+        0.5700702667236328
+      ]
+    },
+    {
+      "leaf": 38,
+      "n_train": 56965,
+      "n_val": 7269,
+      "features": [
+        "openibis_paper",
+        "bsr_paper",
+        "beta_ratio",
+        "openibis_quazi_10s",
+        "spectral_entropy",
+        "openibis_quazi_5s",
+        "openibis_quazi_30s",
+        "openibis_quazi_60s"
+      ],
+      "intercept": -20.70331573486328,
+      "coefs": [
+        0.697847306728363,
+        0.47094714641571045,
+        -4.331177711486816,
+        0.3503882586956024,
+        1.2276884317398071,
+        -0.4310639500617981,
+        0.13532672822475433,
+        0.28317779302597046
+      ]
+    },
+    {
+      "leaf": 41,
+      "n_train": 44235,
+      "n_val": 4342,
+      "features": [
+        "openibis_quazi_60s",
+        "openibis_paper",
+        "openibis_quazi_30s",
+        "bsr_quazi",
+        "p_lowgamma",
+        "openibis_quazi_10s",
+        "p_beta",
+        "openibis_quazi"
+      ],
+      "intercept": 34.81981658935547,
+      "coefs": [
+        0.2903202474117279,
+        0.942812979221344,
+        0.04097512364387512,
+        -0.27218207716941833,
+        -0.027200350537896156,
+        -0.19560149312019348,
+        0.0956447497010231,
+        -0.7493550777435303
+      ]
+    },
+    {
+      "leaf": 42,
+      "n_train": 37953,
+      "n_val": 5170,
+      "features": [
+        "openibis_quazi_60s",
+        "openibis_quazi_10s",
+        "openibis_quazi_30s",
+        "openibis_paper",
+        "openibis_quazi_5s",
+        "openibis_quazi",
+        "sef95_dt",
+        "p_beta"
+      ],
+      "intercept": 24.245620727539062,
+      "coefs": [
+        0.3045661449432373,
+        0.1244201809167862,
+        0.2661755681037903,
+        0.6382005214691162,
+        -0.12861575186252594,
+        -0.6520517468452454,
+        -0.2949471175670624,
+        0.33172979950904846
+      ]
+    },
+    {
+      "leaf": 44,
+      "n_train": 88600,
+      "n_val": 9790,
+      "features": [
+        "openibis_quazi_60s",
+        "openibis_quazi_10s",
+        "openibis_quazi_30s",
+        "openibis_quazi_5s",
+        "openibis_paper",
+        "sef95_dt",
+        "openibis_quazi",
+        "spectral_entropy"
+      ],
+      "intercept": 3.9511375427246094,
+      "coefs": [
+        0.2191154956817627,
+        0.012327909469604492,
+        0.39585238695144653,
+        0.7094818949699402,
+        0.5654126405715942,
+        -0.3397198021411896,
+        -1.1625665426254272,
+        3.5142040252685547
+      ]
+    },
+    {
+      "leaf": 45,
+      "n_train": 26725,
+      "n_val": 5478,
+      "features": [
+        "openibis_quazi_30s",
+        "openibis_paper",
+        "bcsef",
+        "openibis_quazi_60s",
+        "sef95",
+        "openibis_quazi",
+        "openibis_quazi_5s",
+        "openibis_quazi_10s"
+      ],
+      "intercept": -10.876235961914062,
+      "coefs": [
+        0.62568598985672,
+        1.9360766410827637,
+        2.3103713989257812,
+        0.22724822163581848,
+        -1.542220950126648,
+        -1.9314656257629395,
+        0.28539544343948364,
+        -0.26070335507392883
+      ]
+    },
+    {
+      "leaf": 48,
+      "n_train": 10023,
+      "n_val": 1550,
+      "features": [
+        "openibis_quazi_60s",
+        "openibis_paper",
+        "openibis_quazi",
+        "openbsr",
+        "p_delta",
+        "bsr_quazi",
+        "emg_proxy",
+        "p_theta"
+      ],
+      "intercept": -32.44518280029297,
+      "coefs": [
+        0.6130120754241943,
+        1.6967185735702515,
+        -0.9873343110084534,
+        -0.721126914024353,
+        -0.11910257488489151,
+        -0.53376305103302,
+        -0.16064125299453735,
+        0.003168991534039378
+      ]
+    },
+    {
+      "leaf": 50,
+      "n_train": 14476,
+      "n_val": 2326,
+      "features": [
+        "openibis_paper",
+        "openibis_quazi_60s",
+        "openibis_quazi_10s",
+        "beta_ratio",
+        "sef95",
+        "openibis_quazi_30s",
+        "openibis_quazi_5s",
+        "bcsef"
+      ],
+      "intercept": 27.26421356201172,
+      "coefs": [
+        0.500071108341217,
+        0.20178090035915375,
+        0.4822741746902466,
+        1.7418311834335327,
+        0.3115244209766388,
+        -0.09665530920028687,
+        -0.5175783038139343,
+        -0.10843786597251892
+      ]
+    },
+    {
+      "leaf": 51,
+      "n_train": 10071,
+      "n_val": 2494,
+      "features": [
+        "openibis_quazi_60s",
+        "beta_ratio",
+        "openibis_paper",
+        "p_lowgamma",
+        "emg_proxy",
+        "p_beta",
+        "openibis_quazi_10s",
+        "bsr_quazi"
+      ],
+      "intercept": 48.41057586669922,
+      "coefs": [
+        0.16149865090847015,
+        8.443367958068848,
+        -0.0596156045794487,
+        -0.7207592725753784,
+        -0.21397122740745544,
+        0.9470102787017822,
+        0.2020449936389923,
+        0.36211565136909485
+      ]
+    },
+    {
+      "leaf": 54,
+      "n_train": 10004,
+      "n_val": 2166,
+      "features": [
+        "openibis_paper",
+        "bsr_quazi",
+        "beta_ratio",
+        "openbsr",
+        "openibis_quazi_60s",
+        "sef95",
+        "openibis_quazi",
+        "openibis_quazi_30s"
+      ],
+      "intercept": 23.674148559570312,
+      "coefs": [
+        0.4962013065814972,
+        0.21971730887889862,
+        0.8924751281738281,
+        -0.4077053368091583,
+        0.15714994072914124,
+        0.053526196628808975,
+        0.2896054983139038,
+        -0.3110921084880829
+      ]
+    },
+    {
+      "leaf": 55,
+      "n_train": 10916,
+      "n_val": 1773,
+      "features": [
+        "openibis_quazi_60s",
+        "openibis_paper",
+        "openibis_quazi_10s",
+        "openbsr",
+        "openibis_quazi_30s_dt",
+        "emg_proxy",
+        "openibis_quazi_dt",
+        "bsr_quazi"
+      ],
+      "intercept": -7.7038726806640625,
+      "coefs": [
+        0.21683350205421448,
+        0.7793956398963928,
+        -0.059864915907382965,
+        -0.43837106227874756,
+        -0.13486382365226746,
+        -0.05883316323161125,
+        -0.003127124859020114,
+        0.2200378030538559
+      ]
+    },
+    {
+      "leaf": 57,
+      "n_train": 11509,
+      "n_val": 2490,
+      "features": [
+        "bsr_quazi",
+        "openibis_quazi",
+        "p_lowgamma",
+        "openibis_quazi_30s",
+        "openibis_quazi_5s",
+        "emg_proxy",
+        "openibis_quazi_10s",
+        "p_beta"
+      ],
+      "intercept": 74.3186264038086,
+      "coefs": [
+        0.23059754073619843,
+        -0.1056167259812355,
+        -0.20630115270614624,
+        0.21819636225700378,
+        -0.17988881468772888,
+        -0.06515955179929733,
+        0.13801254332065582,
+        0.15267403423786163
+      ]
+    },
+    {
+      "leaf": 58,
+      "n_train": 17500,
+      "n_val": 4380,
+      "features": [
+        "p_lowgamma",
+        "bsr_quazi",
+        "p_beta",
+        "p_delta",
+        "p_theta",
+        "beta_ratio",
+        "openibis_quazi_30s_dt",
+        "openibis_quazi_30s"
+      ],
+      "intercept": 80.49060821533203,
+      "coefs": [
+        0.05439341440796852,
+        0.22790196537971497,
+        -0.11755671352148056,
+        -0.04689851030707359,
+        0.006232611835002899,
+        -1.9592984914779663,
+        2.3237268924713135,
+        0.06579350680112839
+      ]
+    }
+  ],
+  "tree_thresholds": [
+    {
+      "node": 0,
+      "feature": "openibis_quazi_30s",
+      "threshold": 53.999197006225586,
+      "left": 1,
+      "right": 30
+    },
+    {
+      "node": 1,
+      "feature": "openibis_quazi_10s",
+      "threshold": 41.51735877990723,
+      "left": 2,
+      "right": 15
+    },
+    {
+      "node": 2,
+      "feature": "openibis_paper",
+      "threshold": 33.25126266479492,
+      "left": 3,
+      "right": 10
+    },
+    {
+      "node": 3,
+      "feature": "openibis_quazi_30s",
+      "threshold": 28.04356861114502,
+      "left": 4,
+      "right": 7
+    },
+    {
+      "node": 4,
+      "feature": "openibis_quazi_30s",
+      "threshold": 23.684404373168945,
+      "left": 5,
+      "right": 6
+    },
+    {
+      "node": 5,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 6,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 7,
+      "feature": "openibis_quazi_30s",
+      "threshold": 31.17984390258789,
+      "left": 8,
+      "right": 9
+    },
+    {
+      "node": 8,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 9,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 10,
+      "feature": "openibis_paper",
+      "threshold": 65.82174682617188,
+      "left": 11,
+      "right": 14
+    },
+    {
+      "node": 11,
+      "feature": "openbsr",
+      "threshold": 13.888888835906982,
+      "left": 12,
+      "right": 13
+    },
+    {
+      "node": 12,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 13,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 14,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 15,
+      "feature": "bsr_quazi",
+      "threshold": 0.3968254029750824,
+      "left": 16,
+      "right": 23
+    },
+    {
+      "node": 16,
+      "feature": "openibis_quazi_30s",
+      "threshold": 46.98507881164551,
+      "left": 17,
+      "right": 20
+    },
+    {
+      "node": 17,
+      "feature": "openibis_quazi_30s",
+      "threshold": 43.999881744384766,
+      "left": 18,
+      "right": 19
+    },
+    {
+      "node": 18,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 19,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 20,
+      "feature": "openibis_quazi_10s",
+      "threshold": 49.577266693115234,
+      "left": 21,
+      "right": 22
+    },
+    {
+      "node": 21,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 22,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 23,
+      "feature": "openibis_quazi_30s",
+      "threshold": 48.050628662109375,
+      "left": 24,
+      "right": 27
+    },
+    {
+      "node": 24,
+      "feature": "bsr_paper",
+      "threshold": 8.333333253860474,
+      "left": 25,
+      "right": 26
+    },
+    {
+      "node": 25,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 26,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 27,
+      "feature": "beta_ratio",
+      "threshold": -2.006731867790222,
+      "left": 28,
+      "right": 29
+    },
+    {
+      "node": 28,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 29,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 30,
+      "feature": "openibis_paper",
+      "threshold": 78.35678482055664,
+      "left": 31,
+      "right": 46
+    },
+    {
+      "node": 31,
+      "feature": "openibis_quazi_10s",
+      "threshold": 60.55390930175781,
+      "left": 32,
+      "right": 39
+    },
+    {
+      "node": 32,
+      "feature": "bsr_quazi",
+      "threshold": 1.1904762089252472,
+      "left": 33,
+      "right": 36
+    },
+    {
+      "node": 33,
+      "feature": "beta_ratio",
+      "threshold": -1.6826619505882263,
+      "left": 34,
+      "right": 35
+    },
+    {
+      "node": 34,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 35,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 36,
+      "feature": "openibis_quazi_60s",
+      "threshold": 53.4587345123291,
+      "left": 37,
+      "right": 38
+    },
+    {
+      "node": 37,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 38,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 39,
+      "feature": "bcsef",
+      "threshold": 16.480158805847168,
+      "left": 40,
+      "right": 43
+    },
+    {
+      "node": 40,
+      "feature": "p_beta",
+      "threshold": -5.664353847503662,
+      "left": 41,
+      "right": 42
+    },
+    {
+      "node": 41,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 42,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 43,
+      "feature": "openibis_quazi_10s",
+      "threshold": 68.98416137695312,
+      "left": 44,
+      "right": 45
+    },
+    {
+      "node": 44,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 45,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 46,
+      "feature": "openibis_paper",
+      "threshold": 89.17375183105469,
+      "left": 47,
+      "right": 52
+    },
+    {
+      "node": 47,
+      "feature": "openibis_quazi_60s",
+      "threshold": 71.11100387573242,
+      "left": 48,
+      "right": 49
+    },
+    {
+      "node": 48,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 49,
+      "feature": "emg_proxy",
+      "threshold": -21.536593437194824,
+      "left": 50,
+      "right": 51
+    },
+    {
+      "node": 50,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 51,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 52,
+      "feature": "openibis_paper",
+      "threshold": 95.33401489257812,
+      "left": 53,
+      "right": 56
+    },
+    {
+      "node": 53,
+      "feature": "emg_proxy",
+      "threshold": -21.04385471343994,
+      "left": 54,
+      "right": 55
+    },
+    {
+      "node": 54,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 55,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 56,
+      "feature": "openibis_quazi_60s",
+      "threshold": 95.54070281982422,
+      "left": 57,
+      "right": 58
+    },
+    {
+      "node": 57,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    },
+    {
+      "node": 58,
+      "feature": null,
+      "threshold": -2.0,
+      "left": -1,
+      "right": -1
+    }
+  ]
+}
